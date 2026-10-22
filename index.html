@@ -1,0 +1,3056 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LIGHT MAKER</title>
+<style>
+  :root{
+    --bg:#000000; --fg:#f2f2f2; --mid:#7d7d7d; --hair:#262626; --line:#3a3a3a; --accent:#ff2d16; --blue:#3d8bff; --cyan:#3ee6ff;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    color-scheme:dark;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){ --bg:#000000; --fg:#f2f2f2; --mid:#7d7d7d; --hair:#262626; --line:#3a3a3a; }
+  }
+  :root[data-theme="dark"]{ --bg:#000000; --fg:#f2f2f2; --mid:#7d7d7d; --hair:#262626; --line:#3a3a3a; }
+  html{ scroll-padding-top:env(safe-area-inset-top,0px); }
+  *,*::before,*::after{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:"Helvetica Neue",Helvetica,"Hiragino Kaku Gothic ProN",Arial,sans-serif;
+    font-size:12px; line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  button{ font:inherit; }
+
+  .app{ max-width:1180px; margin:0 auto; padding:0 20px 80px;
+        display:grid; grid-template-columns:minmax(0,1fr) 410px; gap:36px; }
+  header{ grid-column:1/-1; padding:40px 0 0; }
+  header h1{ font-size:44px; font-weight:900; letter-spacing:-.02em; margin:0; line-height:1; }
+  header .rule{ height:1px; background:var(--fg); margin:14px 0 10px; }
+  header p{ font-size:11px; color:var(--mid); margin:0; max-width:40em; }
+
+  .stage{ position:sticky; top:env(safe-area-inset-top,0px); align-self:start;
+          padding-top:20px; background:var(--bg); z-index:5; }
+  .canvaswrap{ border:1px solid var(--line); line-height:0; }
+  #cv{ width:100%; height:auto; aspect-ratio:1/1; display:block; touch-action:none; }
+  .stagebar{ display:grid; grid-template-columns:1fr 1fr 0.8fr 1.3fr; margin-top:8px; }
+  .stagebar button{ padding:10px 4px; border:1px solid var(--line); background:var(--bg); color:var(--mid);
+                    font-size:10px; cursor:pointer; margin-left:-1px; }
+  .stagebar button:first-child{ margin-left:0; }
+  .stagebar button.on{ color:var(--fg); border-color:var(--fg); }
+  .stagebar button.primary{ background:var(--fg); color:var(--bg); border-color:var(--fg); }
+  .stagenote{ font-size:10px; color:var(--mid); margin-top:8px; line-height:1.7; }
+  .stageline{ border:1px solid var(--fg); border-top:none; padding:0 10px; }
+  .stageline .slider{ border-top:none; }
+  .stagelinetag{ font-size:9.5px; color:var(--mid); padding:0 0 6px; }
+  @media (max-width:860px){ .stageline{ width:min(100%,38vh); margin:0 auto; } }
+  .legend{ display:inline-block; width:8px; height:8px; margin:0 3px 0 6px; vertical-align:middle; }
+
+  .panel{ padding-top:20px; }
+  .tabs{ position:sticky; top:env(safe-area-inset-top,0px); z-index:4; background:var(--bg);
+         display:grid; grid-template-columns:repeat(4,1fr); border-bottom:1px solid var(--fg); }
+  .tab{ padding:12px 2px 10px; border:none; background:none; color:var(--mid); font-size:10.5px; cursor:pointer;
+        border-bottom:2px solid transparent; margin-bottom:-1px; line-height:1.3; }
+  .tab .tn{ display:block; font-size:9px; letter-spacing:.08em; margin-bottom:2px; }
+  .tab.on{ color:var(--fg); border-bottom-color:var(--fg); }
+  .pane{ display:none; }
+  .pane.on{ display:block; }
+
+  .sec{ border-top:1px solid var(--line); padding:10px 0 18px; transition:opacity .15s; }
+  .pane .sec:first-child{ border-top:none; }
+  .sec.dim{ opacity:.3; pointer-events:none; }
+  .sechead{ display:flex; gap:14px; align-items:baseline; margin-bottom:6px; }
+  .sechead .name{ font-size:12px; }
+  .sechead .tag{ margin-left:auto; font-size:10px; color:var(--mid); }
+  .subhead{ font-size:10px; color:var(--mid); margin:16px 0 0; }
+  .box{ border:1px solid var(--hair); border-top:none; padding:2px 10px 4px; transition:opacity .15s; }
+  .box.dim{ opacity:.3; pointer-events:none; }
+  .box.solo{ border-top:1px solid var(--hair); margin-top:8px; }
+  .hide{ display:none !important; }
+
+  .slider{ display:grid; grid-template-columns:96px 1fr 46px; align-items:center; gap:12px;
+           padding:9px 0; border-top:1px solid var(--hair); transition:opacity .15s; }
+  .slider:first-child{ border-top:none; }
+  .slider.dim{ opacity:.3; pointer-events:none; }
+  .row2.dim{ opacity:.3; pointer-events:none; }
+  .slider .lbl{ font-size:10px; color:var(--mid); background:none; border:none;
+                padding:0; text-align:left; cursor:pointer; }
+  .slider .lbl:hover{ color:var(--fg); }
+  .slider .val{ text-align:right; font-variant-numeric:tabular-nums; font-size:11px; }
+  .track{ position:relative; display:flex; align-items:center; }
+  .track .zero{ position:absolute; left:50%; top:50%; width:1px; height:9px;
+                margin-top:-4.5px; background:var(--fg); pointer-events:none; }
+  input[type="range"]{ -webkit-appearance:none; appearance:none; width:100%; height:1px;
+                       background:var(--fg); outline:none; margin:10px 0; }
+  input[type="range"]::-webkit-slider-thumb{ -webkit-appearance:none; width:13px; height:13px;
+                       background:var(--fg); cursor:pointer; border:none; }
+  input[type="range"]::-moz-range-thumb{ width:13px; height:13px; background:var(--fg);
+                       border:none; border-radius:0; cursor:pointer; }
+  input[type="range"]:focus-visible::-webkit-slider-thumb{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  .selectwrap{ position:relative; margin:4px 0 6px; flex:1; }
+  .selectwrap select{
+    -webkit-appearance:none; appearance:none; width:100%;
+    border:1px solid var(--fg); border-radius:0; background:var(--bg); color:var(--fg);
+    font:inherit; font-size:12px; padding:11px 36px 11px 12px; cursor:pointer;
+  }
+  .selectwrap::after{ content:""; position:absolute; right:14px; top:50%; width:7px; height:7px;
+    margin-top:-6px; border-right:1px solid var(--fg); border-bottom:1px solid var(--fg);
+    transform:rotate(45deg); pointer-events:none; }
+
+  .chips{ display:grid; grid-template-columns:repeat(5,1fr); gap:0; margin-top:4px; }
+  .chip{ border:1px solid var(--line); margin:-1px 0 0 -1px; padding:10px 4px; background:var(--bg);
+         color:var(--mid); font-size:10px; cursor:pointer; text-align:center; }
+  .chip.on{ background:var(--fg); color:var(--bg); border-color:var(--fg); }
+  .row3{ display:flex; margin-top:10px; }
+  .row3 button{ flex:1; padding:12px 4px; border:1px solid var(--fg); background:var(--bg); color:var(--fg);
+                font-size:10px; cursor:pointer; }
+  .row3 button+button{ border-left:none; }
+  .row3 button.danger{ color:var(--accent); }
+  .row3 button:disabled{ opacity:.35; cursor:default; }
+
+  .row4{ display:grid; grid-template-columns:repeat(4,1fr); margin-top:6px; }
+  .row4.three{ grid-template-columns:repeat(3,1fr); }
+  .row4 button{ padding:12px 2px; border:1px solid var(--fg); background:var(--bg); color:var(--fg);
+                font-size:10px; cursor:pointer; margin-left:-1px; }
+  .row4 button:first-child{ margin-left:0; }
+  .row4 button.on{ background:var(--fg); color:var(--bg); }
+
+  .presets{ display:grid; grid-template-columns:repeat(6,1fr); gap:0; margin-top:6px; }
+  .preset{ border:1px solid var(--line); margin:0 0 0 -1px; padding:0; background:none; cursor:pointer;
+           color:var(--fg); font-size:10px; }
+  .preset:first-child{ margin-left:0; }
+  .preset .pchip{ display:block; height:34px; }
+  .preset .pl{ display:block; padding:5px 0; }
+  .preset.on{ background:var(--fg); color:var(--bg); border-color:var(--fg); }
+
+  .colors{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:0; margin-top:12px; }
+  .colors.one{ grid-template-columns:1fr; }
+  .colorcell{ display:flex; flex-direction:column; align-items:center; gap:6px; border:1px solid var(--line);
+              padding:10px 6px 8px; cursor:pointer; }
+  .colorcell+.colorcell{ border-left:none; }
+  .colorcell .sw{ width:100%; height:30px; border:1px solid var(--line); position:relative; }
+  .colorcell input{ position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; padding:0; cursor:pointer; }
+  .colorcell span{ font-size:10px; color:var(--mid); }
+  .gradpreview{ position:relative; height:18px; border:1px solid var(--line); border-top:none; }
+  .gradpreview .tick{ position:absolute; top:-1px; bottom:-1px; width:1px; background:#fff; mix-blend-mode:difference; }
+
+  .row2{ display:flex; margin-top:8px; }
+  .row2 button{ flex:1; padding:12px 4px; border:1px solid var(--fg); background:var(--bg); color:var(--fg);
+                font-size:10px; cursor:pointer; }
+  .row2 button+button{ border-left:none; }
+  .row2 button.on{ background:var(--fg); color:var(--bg); }
+  .row2 button:disabled{ opacity:.35; cursor:default; }
+  .row2.tight{ margin-top:6px; }
+  .row2.inbox{ margin:8px 0 4px; }
+  .note{ font-size:10px; color:var(--mid); margin:8px 0 0; line-height:1.8; }
+
+  .overlay{ position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.88);
+            display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+            padding:calc(20px + env(safe-area-inset-top,0px)) 20px calc(20px + env(safe-area-inset-bottom,0px)); }
+  .overlay.on{ display:flex; }
+  .overlay img{ width:min(80vmin,560px); height:auto; border:1px solid #fff;
+                background-color:#fff;
+                background-image:linear-gradient(45deg,#ddd 25%,transparent 25%),linear-gradient(-45deg,#ddd 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#ddd 75%),linear-gradient(-45deg,transparent 75%,#ddd 75%);
+                background-size:20px 20px; background-position:0 0,0 10px,10px -10px,-10px 0; }
+  .overlay p{ color:#fff; font-size:11px; margin:0; text-align:center; }
+  .overlay button{ padding:10px 28px; border:1px solid #fff; background:none; color:#fff; font-size:11px; cursor:pointer; }
+
+  @media (max-width:860px){
+    .app{ grid-template-columns:1fr; gap:0; }
+    header{ padding-top:26px; }
+    header h1{ font-size:34px; }
+    .stage{ padding:12px 0 10px; border-bottom:1px solid var(--fg); }
+    .canvaswrap{ width:min(100%,38vh); margin:0 auto; }
+    .stagebar{ width:min(100%,38vh); margin-left:auto; margin-right:auto; }
+    .stagenote{ text-align:center; }
+    .tabs{ top:0; position:relative; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>LIGHT MAKER</h1>
+    <div class="rule"></div>
+    <p>光のかたちを作る。棘を一本ずつ曲げる、並べて回す、近づけて溶かす。</p>
+  </header>
+
+  <div class="stage">
+    <div class="canvaswrap"><canvas id="cv"></canvas></div>
+    <div class="stagebar">
+      <button id="hOn" type="button" class="on">ハンドル表示</button>
+      <button id="hOff" type="button">ハンドル非表示</button>
+      <button id="dupObjBar" type="button">選択中を複製</button>
+      <button id="exportBtn" type="button" class="primary">透明PNGで書き出す</button>
+    </div>
+    <div class="stageline hide" id="stageLine">
+      <div id="stageLineBox"></div>
+      <div class="stagelinetag" id="stageLineTag"></div>
+    </div>
+    <p class="stagenote">
+      <span class="legend" style="background:#ff2d16;border-radius:50%"></span>頂点
+      <span class="legend" style="background:#3ee6ff;border-radius:50%"></span>棘の曲げ
+      <span class="legend" style="background:#fff;border-radius:50%"></span>回転
+      <span class="legend" style="background:#ff2d16"></span>移動
+      <span class="legend" style="background:#3d8bff;transform:rotate(45deg)"></span>チェーンの曲線
+      <span class="legend" style="background:#3ee6ff;border-radius:50%"></span>線の太さ（↕）
+    </p>
+  </div>
+
+  <div class="panel">
+    <div class="tabs" role="tablist">
+      <button class="tab on" type="button" data-pane="pShape" role="tab"><span class="tn">01</span>形状・配置</button>
+      <button class="tab" type="button" data-pane="pFuse" role="tab"><span class="tn">02</span>融合</button>
+      <button class="tab" type="button" data-pane="pBase" role="tab"><span class="tn">03</span>ベースカラー</button>
+      <button class="tab" type="button" data-pane="pLight" role="tab"><span class="tn">04</span>光・エフェクト</button>
+    </div>
+
+    <!-- ================= タブ1：形状・配置 ================= -->
+    <div class="pane on" id="pShape">
+      <div class="sec">
+        <div class="sechead"><span class="name">オブジェクト</span></div>
+        <div class="chips" id="objList"></div>
+        <div class="row3">
+          <button id="addObj" type="button">＋ 追加</button>
+          <button id="dupObj" type="button">複製</button>
+          <button id="delObj" type="button" class="danger">削除</button>
+        </div>
+      </div>
+
+      <div class="sec" id="secLayout">
+        <div class="sechead"><span class="name">配置モード</span></div>
+        <div class="row4">
+          <button id="lmFree" type="button" class="on">単体</button>
+          <button id="lmCircle" type="button">サークル</button>
+          <button id="lmSpiral" type="button">スパイラル</button>
+          <button id="lmChain" type="button">チェーン</button>
+        </div>
+        <div class="box solo" id="boxCircle"></div>
+        <div class="box solo" id="boxSpiral"></div>
+        <div class="box solo" id="boxChain"></div>
+
+        <div id="arrayRotWrap">
+          <div class="subhead">パスの接線に沿って向きを揃える</div>
+          <div class="row2 tight">
+            <button id="alOn" type="button" class="on">ON</button>
+            <button id="alOff" type="button">OFF</button>
+          </div>
+          <div class="subhead">回転</div>
+          <div class="box solo" id="boxArrayRot"></div>
+          <div class="row2"><button id="resetInstRot" type="button">個別の回転をすべてリセット</button></div>
+          <div class="row2"><button id="extractInst" type="button">選択中の図形を1つ取り出して複製（単体に）</button></div>
+          <p class="note">図形をタップすると、その1つが選ばれます（<span id="instLabel">1</span>番目を選択中）。白い丸をドラッグするか「選択中の回転」で、1つずつ角度を変えて頂点どうしをくっつけられます。</p>
+        </div>
+      </div>
+
+      <div class="sec" id="secShape">
+        <div class="sechead"><span class="name">形</span><span class="tag" id="shapeTag"></span></div>
+        <div class="selectwrap"><select id="shapeSelect" aria-label="ベース図形"></select></div>
+        <div id="groupShape"></div>
+        <p class="note" id="pointsNote">頂点の数は「丸」と「星」で使えます。</p>
+        <div class="subhead">棘の個別ツイスト（曲げ）</div>
+        <p class="note">各頂点の先にある水色の丸をドラッグすると、その棘だけを左右にぐにゃっと曲げられます。上の「全体の曲げ」は、全部の棘を同じ向きにそろえて曲げる一括調整です。</p>
+        <div class="row2">
+          <button id="resetBends" type="button">曲げをリセット</button>
+          <button id="resetVerts" type="button">頂点の位置をリセット</button>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sechead"><span class="name">描画モード</span></div>
+        <div class="row4 three">
+          <button id="dmLight" type="button" class="on">光</button>
+          <button id="dmSolid" type="button">シルエット</button>
+          <button id="dmLine" type="button">輪郭線のみ</button>
+        </div>
+        <div class="box solo" id="boxLine"></div>
+        <p class="note">シルエットと輪郭線は、光の効果を使わずベースカラーの中間色で描きます。</p>
+      </div>
+      <div class="sec hide" id="secOrbit">
+        <div class="sechead"><span class="name">接続線（頂点から頂点へ）</span><span class="tag" id="lineTag"></span></div>
+        <div class="subhead">編集する線</div>
+        <div class="chips" id="lineList"></div>
+        <div class="subhead">線の太さ（Line Width）</div>
+        <div class="box solo" id="boxLineWidth"></div>
+        <div class="subhead">線の色</div>
+        <div class="row2 tight">
+          <button id="lcInherit" type="button" class="on">つないだ図形の色を引き継ぐ</button>
+          <button id="lcOwn" type="button">この線の色（ベースカラータブ）</button>
+        </div>
+        <p class="note">引き継ぐときは、Aの図形の色からBの図形の色へ、線の長さに沿ってなめらかに移り変わります。</p>
+        <div class="subhead">つなぐ頂点（A：1つ目のオブジェクト）</div>
+        <div class="selectwrap"><select id="ovA" aria-label="Aの頂点"></select></div>
+        <div class="subhead">つなぐ頂点（B：2つ目のオブジェクト）</div>
+        <div class="selectwrap"><select id="ovB" aria-label="Bの頂点"></select></div>
+        <div class="subhead">「自動」のときの選び方</div>
+        <div class="row2 tight">
+          <button id="oaNear" type="button" class="on">向かい合う棘どうし</button>
+          <button id="oaOuter" type="button">外側の棘どうし</button>
+        </div>
+        <div class="row2"><button id="orbitAuto" type="button">両端を「自動」に戻す</button></div>
+        <p class="note">ループを選んでいるあいだ、キャンバス上の棘の先に A1, A2… / B1, B2… と番号が出ます。いまつないでいる頂点は塗りつぶしで表示されます。水色の輪をドラッグして、近くの棘に付け替えることもできます。</p>
+
+        <div class="subhead">棘の先からの出方</div>
+        <div class="row2 tight">
+          <button id="tgOn" type="button" class="on">棘の向きに沿ってなめらかに出す</button>
+          <button id="tgOff" type="button">自由に曲げる（方向スライダー）</button>
+        </div>
+        <p class="note">線の太さは、キャンバス上で線の真ん中の横にある水色の「↕」丸をドラッグしても変えられます（外へ引くと太く）。</p>
+        <p class="note">「なめらかに出す」では、線の出だしの角度が棘の先端の角度とぴったり一致し、先端から継ぎ目なく伸び出します。白い四角は棘の向きの線上をすべり、カーブの大きさだけが変わります（このとき「方向」「棘の向きに沿わせる」は使いません）。</p>
+        <div class="subhead">線の曲がり方</div>
+        <div class="row2 tight" id="osRow">
+          <button id="osLoop" type="button" class="on">弧（C字）</button>
+          <button id="osEight" type="button">S字</button>
+        </div>
+        <div class="box solo" id="boxOrbit"></div>
+        <p class="note">「始点の太さ」「終点の太さ」で、線の入りと抜きを作れます。片方を0%にすると、筆で払ったようにその端へ向かって細く消えていきます。</p>
+        <div class="row2"><button id="delLine" type="button" style="color:#ff2d16;border-color:#ff2d16">この線を削除</button></div>
+        <p class="note">Aの頂点から始まり、Bの頂点で終わる1本の曲線です（輪や楕円は作りません）。「カーブの膨らみ」で線がどれだけ大きくたわむか（0で直線に近い）、「カーブの方向」で右・左・S字など曲がる向きを、つまみ1本で連続的に変えられます。0°＝右にふくらむ弧、90°＝S字、180°＝左にふくらむ弧、−90°＝逆S字です。キャンバス上の白い四角（制御点）は、Illustratorのハンドルのように直接ドラッグできます。ドラッグするとスライダーが、スライダーを動かすと四角が、リアルタイムに連動します。「棘の向きに沿わせる」を上げると、線が棘の先からそのまま伸びるように出ていきます。</p>
+
+        <div class="subhead">本体と溶け合わせる</div>
+        <div class="row2 tight">
+          <button id="ofOff" type="button" class="on">OFF（細い線のまま）</button>
+          <button id="ofOn" type="button">ON（融合に参加）</button>
+        </div>
+        <p class="note">OFFでは融合の計算に入らず、フル解像度の細くシャープな線として独立して描きます（グラデーションと光はそのままかかります）。ONにすると本体とメタボールで溶け合います。</p>
+      </div>
+
+    </div>
+
+    <!-- ================= タブ2：融合 ================= -->
+    <div class="pane" id="pFuse">
+      <div class="sec">
+        <div class="sechead"><span class="name">メタボール融合</span><span class="tag">すべてのオブジェクトに共通</span></div>
+        <div class="row2 tight">
+          <button id="fuOn" type="button" class="on">ON</button>
+          <button id="fuOff" type="button">OFF</button>
+        </div>
+        <div class="box" id="boxFuse"></div>
+        <p class="note">ONのあいだは、オブジェクトや並べた図形をドラッグで近づけるだけで、距離に応じて水滴のように溶け合います。離せばまた分かれます。設定や接続の操作はいりません。</p>
+        <p class="note">しくみは「白で塗った形 → ぼかし → しきい値でシャープに」。「なめらかさ」はぼかしの大きさで、上げるほど遠くからくっつき、つなぎ目がとろりと太くなります。図形の中身は削られず、2つ以上の図形が近くにある場所だけにつなぎ目が足されます（1つの星の棘の間は埋まりません）。</p>
+        <p class="note">「つなぎ目の太さ」はしきい値で、＋にするほどつなぎ目が太く、−で細くなります。図形そのものの形は変わりません。</p>
+        <p class="note">OFFにすると溶け合わず、重なった部分はそのまま重なります。</p>
+        <p class="note">融合しているあいだも、図形をタップすれば個別に選べてドラッグで動かせます。溶け合ったつなぎ目をタップすると、そこを一番多く占めているオブジェクトが選ばれます。</p>
+      </div>
+
+      <div class="sec">
+        <div class="sechead"><span class="name">接続線（頂点から頂点へ）</span></div>
+        <p class="note">オブジェクトAの頂点から、オブジェクトBの頂点へ、1本の曲線を直接つなぎます。本体の融合とは別の細い線として描くので太い塊になりません。グラデーションと光はそのままかかります。</p>
+        <div class="subhead">A：つなぐ1つ目のオブジェクト と 頂点</div>
+        <div class="selectwrap"><select id="orbA" aria-label="つなぐ1つ目"></select></div>
+        <div class="selectwrap"><select id="orbAv" aria-label="1つ目の頂点"></select></div>
+        <div class="subhead">B：つなぐ2つ目のオブジェクト と 頂点</div>
+        <div class="selectwrap"><select id="orbB" aria-label="つなぐ2つ目"></select></div>
+        <div class="selectwrap"><select id="orbBv" aria-label="2つ目の頂点"></select></div>
+        <div class="subhead">頂点が「自動」のときの選び方</div>
+        <div class="row2 tight">
+          <button id="coNear" type="button" class="on">向かい合う棘どうし</button>
+          <button id="coOuter" type="button">外側の棘どうし</button>
+        </div>
+        <div class="row2"><button id="createOrbit" type="button">線でつなぐ</button></div>
+        <p class="note">このタブを開いているあいだ、選んだ2つのオブジェクトの棘の先に A1… / B1… の番号が表示されます。</p>
+        <p class="note">作ったループは「形状・配置」タブで、余白・つぶれ・傾き・太さを調整できます。ループを選んで複製すると、傾きを変えたもう1本が重なり、原子模型のような交差ができます。</p>
+      </div>
+    </div>
+
+    <!-- ================= タブ3：ベースカラー ================= -->
+    <div class="pane" id="pBase">
+      <div class="sec">
+        <div class="sechead"><span class="name">図形本体の3色</span></div>
+        <div class="presets" id="presets"></div>
+        <div class="colors">
+          <label class="colorcell"><span class="sw" id="swCore"><input type="color" id="colCore"></span><span>中心</span></label>
+          <label class="colorcell"><span class="sw" id="swMid"><input type="color" id="colMid"></span><span>中間</span></label>
+          <label class="colorcell"><span class="sw" id="swOuter"><input type="color" id="colOuter"></span><span>外側</span></label>
+        </div>
+        <div class="gradpreview" id="gradPreview"><span class="tick" id="tickMid"></span><span class="tick" id="tickOuter"></span></div>
+      </div>
+      <div class="sec">
+        <div class="sechead"><span class="name">グラデーションの分岐点</span></div>
+        <div id="groupGrad"></div>
+        <p class="note">中心の極小の点から、融合した形全体の輪郭に沿って、中間の位置で中間色、外側の位置で外側の色に達します。</p>
+      </div>
+      <div class="sec">
+        <div class="sechead"><span class="name">不透明度</span></div>
+        <div id="groupOpacity"></div>
+      </div>
+    </div>
+
+    <!-- ================= タブ4：光・エフェクト ================= -->
+    <div class="pane" id="pLight">
+      <div class="sec">
+        <div class="row2 tight"><button id="flatAll" type="button">光とエフェクトをすべてOFF（フラットに戻す）</button></div>
+        <p class="note">すべてのオブジェクトの光・十字線・白線・棘の光・ぼかしと、Y2Kエフェクトを一度にOFFにします。起動直後もこの状態です。</p>
+      </div>
+      <div class="sec" id="secGlowColor">
+        <div class="sechead"><span class="name">光の色</span></div>
+        <div class="row2 tight">
+          <button id="gaAuto" type="button" class="on">外側の色に合わせる</button>
+          <button id="gaCustom" type="button">自分で選ぶ</button>
+        </div>
+        <div class="colors one">
+          <label class="colorcell"><span class="sw" id="swGlow"><input type="color" id="colGlow"></span><span id="glowLabel">光の色（いまは外側の色）</span></label>
+        </div>
+        <div class="gradpreview" id="glowPreview"></div>
+        <p class="note">輪郭の光・ぼかし・中央の光・十字線・棘の光はこの色で描きます。中心は白く、外へ向かってこの色にフェードします。色を選ぶと自動で「自分で選ぶ」に切り替わります。</p>
+      </div>
+
+      <div class="sec" id="secElements">
+        <div class="sechead"><span class="name">光の要素</span></div>
+        <div id="groupGlow"></div>
+
+        <div class="subhead">中央の光</div>
+        <div class="row2 tight" id="tgCore"></div>
+        <div class="box" id="boxCore"></div>
+
+        <div class="subhead">輪郭の光</div>
+        <div class="row2 tight" id="tgOutline"></div>
+        <div class="box" id="boxOutline"></div>
+
+        <div class="subhead">棘の光（芯線と針）</div>
+        <div class="row2 tight" id="tgSpike"></div>
+        <p class="note">「尖り」を＋にしたとき、中心から棘の先への芯線と、先端から外へ伸びる針状の光を加えます。</p>
+
+        <div class="subhead">輪郭の白線（フチ取り）</div>
+        <div class="row2 tight">
+          <button id="edOn" type="button">ON</button>
+          <button id="edOff" type="button" class="on">OFF</button>
+        </div>
+        <p class="note">OFFにすると、縁の白い線と内側の縁の光を消し、ベースカラーの外側の色がそのまま輪郭として見えます。外側の光は少し離れたところから始まります。</p>
+
+        <div class="subhead">十字線</div>
+        <div class="row2 tight" id="tgCross"></div>
+        <div class="box" id="boxCross">
+          <div class="row2 inbox">
+            <button id="caEach" type="button" class="on">各図形から</button>
+            <button id="caCenter" type="button">全体の中心から1つ</button>
+          </div>
+          <div id="boxCrossSliders"></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sechead"><span class="name">Y2Kエフェクト</span><span class="tag">全体にかかります</span></div>
+
+        <div class="subhead">1. 波形（光のみ）</div>
+        <div class="row2 tight" id="tgWave"></div>
+        <div class="box" id="boxWave">
+          <div class="row2 inbox">
+            <button id="waveModeWave" class="on" type="button">波形（横揺れ）</button>
+            <button id="waveModeRipple" type="button">波紋（同心円）</button>
+          </div>
+          <div id="boxWaveSliders"></div>
+        </div>
+
+        <div class="subhead">2. グリッチ</div>
+        <div class="row2 tight" id="tgGlitch"></div>
+        <div class="box" id="boxGlitch">
+          <div id="boxGlitchSliders"></div>
+          <div class="row2 inbox"><button id="glitchSeed" type="button">グリッチのパターンを変える</button></div>
+        </div>
+
+        <div class="subhead">3. 色収差（RGBずらし）</div>
+        <div class="row2 tight" id="tgChroma"></div>
+        <div class="box" id="boxChroma"></div>
+
+        <div class="subhead">4. ピクセル化</div>
+        <div class="row2 tight" id="tgPixel"></div>
+        <div class="box" id="boxPixel"></div>
+
+        <div class="subhead">5. ノイズ</div>
+        <div class="row2 tight" id="tgNoise"></div>
+        <div class="box" id="boxNoise"></div>
+
+        <p class="note">番号の順にかかります。波形は図形本体を歪めず、まわりの光と前面の光だけを揺らします。</p>
+      </div>
+
+      <div class="sec">
+        <div class="sechead"><span class="name">背景</span></div>
+        <div class="row2 tight">
+          <button id="bgDark" class="on" type="button">黒</button>
+          <button id="bgLight" type="button">白</button>
+        </div>
+        <p class="note">確認用の背景です。書き出す画像は背景なしの透明PNGになります。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <img id="exportImg" alt="書き出した光オブジェクト">
+  <p>画像を長押し（PCは右クリック）で保存できます。</p>
+  <button id="closeOverlay" type="button">閉じる</button>
+</div>
+
+<script>
+(function(){
+  var S = 1000, C = S / 2, NN = S * S;
+  var W = 500, KW = W / S, WW = W * W;
+  var $ = function(id){ return document.getElementById(id); };
+  var cv = $('cv');
+  var ctx = cv.getContext('2d');
+  cv.width = S; cv.height = S;
+
+  function mk(w, h){ var c = document.createElement('canvas'); c.width = w || S; c.height = h || S; return c; }
+  var off   = mk(), octx  = off.getContext('2d');
+  var back  = mk(), bkctx = back.getContext('2d');
+  var body  = mk(), bdctx = body.getContext('2d');
+  var front = mk(), frctx = front.getContext('2d');
+  var oBack = mk(), obctx = oBack.getContext('2d');
+  var oBody = mk(), obdctx = oBody.getContext('2d');
+  var oFront= mk(), ofctx = oFront.getContext('2d');
+  var mask  = mk(), mctx  = mask.getContext('2d');    /* 1オブジェクト分（融合の持ち分） */
+  var gmask = mk(), gmctx = gmask.getContext('2d');   /* シーン全体の融合形 */
+  var ginv  = mk(), gictx = ginv.getContext('2d');
+  var tint  = mk(), tnctx = tint.getContext('2d');
+  var rim   = mk(), rmctx = rim.getContext('2d');
+  var ring  = mk(), rgctx = ring.getContext('2d');
+  var tmp   = mk(), tctx  = tmp.getContext('2d');
+  var small = mk(1, 1), sctx = small.getContext('2d');
+  var gauge = mk(W, W), gctx = gauge.getContext('2d', { willReadFrequently:true });
+  var bodyLow = mk(W, W), blctx = bodyLow.getContext('2d');
+  var aLow = mk(W, W), alctx = aLow.getContext('2d');      /* 融合後の形（低解像度・全体） */
+  var wLow = mk(W, W), wlctx = wLow.getContext('2d');      /* オブジェクトごとの持ち分（低解像度） */
+  var hitCtx = mk(4, 4).getContext('2d');
+
+  /* =========================================================
+     状態
+     ========================================================= */
+  var G = {
+    handles: true, dark: true,
+    fuseOn: true, fuseAmt: 55, neckAmt: 0,
+    waveOn: false,   waveMode: 'wave', waveAmt: 35, waveFine: 50,
+    glitchOn: false, glitchAmt: 30,    glitchSeed: 7,
+    chromaOn: false, chromaAmt: 30,
+    pixelOn: false,  pixelAmt: 20,
+    noiseOn: false,  noiseAmt: 35
+  };
+
+  function defaultLight(){
+    return {
+      mode: 'light', lineWidth: 4,
+      opacity: 100, glow: 0,
+      /* 初期は白を含まない、同系色の落ち着いたグラデーション */
+      core: '#8fb6e3', mid: '#5a86c4', outer: '#2e4f8f',
+      midPos: 45, outerPos: 100, coreSize: 50,
+      glowAuto: true, glowColor: '#ffd84a', edgeOn: false, spikeOn: false,
+      /* 光の要素は初期状態ですべてOFF */
+      coreOn: false,    coreSpread: 45,    coreInt: 55,
+      outlineOn: false, outlineSpread: 35, outlineInt: 100,
+      crossOn: false,   crossLen: 45,      crossWidth: 30, crossInt: 45, crossAngle: 0, crossAt: 'each'
+    };
+  }
+  function defaultLayout(){
+    return {
+      mode: 'free', align: true, rotAll: 0,
+      instRot: { circle: [], spiral: [], chain: [] },
+      count: 8, spacing: 100, extent: 240,
+      spCount: 14, spStep: 40, spExtent: 330, spShrink: 60,
+      chCount: 14, chTaper: 70, chBranches: 2, chBranchLen: 50,
+      chPts: [[-290, 70], [-100, -170], [100, 170], [290, -70]]
+    };
+  }
+  function defaultGeo(x, y){
+    return { x:x, y:y, shape:'circle', size:130, spike:100, sharp:0, twist:0, rot:0, points:4, offsets:null, bends:null };
+  }
+  var uid = 1;
+  function newObject(x, y){
+    var g = defaultGeo(x, y); resetOffsets(g); resetBends(g);
+    return { id: uid++, light: defaultLight(), layout: defaultLayout(), geo: g, activeInst: 0 };
+  }
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+
+  /* ループ（オービタル接続）：2つのオブジェクトの中心を基準に楕円のチューブを作る */
+  function newOrbit(A, B){
+    var pa = centerOf(A), pb = centerOf(B);
+    var g = defaultGeo((pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2); resetOffsets(g); resetBends(g);
+    return {
+      id: uid++, kind: 'orbit', light: clone(A.light), layout: defaultLayout(), geo: g, activeInst: 0,
+      orbit: { a: A.id, b: B.id, va: 0, vb: 0, autoMode: 'near', pA: pa, pB: pb, shape: 'loop', fuse: false,
+               bulge: 30, dir: 0, arm1: 33, arm2: 33, follow: 50, lineWidth: 14, startW: 100, endW: 100, taper: 0, tipThin: 88, relief: 45, gloss: 55, colorMode: 'inherit', tangent: true }
+    };
+  }
+  function findObj(id){
+    for (var i = 0; i < objects.length; i++) if (objects[i].id === id) return objects[i];
+    return null;
+  }
+  function centerOf(o){
+    var inst = instances(o), sx = 0, sy = 0;
+    inst.forEach(function(it){ var g = geometry(it.geo); sx += g.fx; sy += g.fy; });
+    return [sx / inst.length, sy / inst.length];
+  }
+
+  var objects = [];
+  var sel = 0;
+  function curObj(){ return objects[sel]; }
+  function curGeo(){ return curObj().geo; }
+
+  /* =========================================================
+     図形の定義
+     ========================================================= */
+  function pts(arr){ return arr.map(function(p){ return { x:p[0], y:p[1], tip: p[2] !== false }; }); }
+  function hs(arr){ return arr.map(function(h){ return h ? [{ x:h[0][0], y:h[0][1] }, { x:h[1][0], y:h[1][1] }] : null; }); }
+  function straight(n){ var a = []; for (var i = 0; i < n; i++) a.push(null); return a; }
+
+  function circleDef(n){
+    var th = Math.PI * 2 / n, k = 4 / 3 * Math.tan(th / 4), A = [], H = [];
+    for (var i = 0; i < n; i++){
+      var a0 = -Math.PI / 2 + i * th, a1 = a0 + th;
+      A.push({ x:Math.cos(a0), y:Math.sin(a0), tip:true });
+      H.push([
+        { x:Math.cos(a0) - Math.sin(a0) * k, y:Math.sin(a0) + Math.cos(a0) * k },
+        { x:Math.cos(a1) + Math.sin(a1) * k, y:Math.sin(a1) - Math.cos(a1) * k }
+      ]);
+    }
+    return { anchors:A, handles:H, valley:0.03, focus:{ x:0, y:0 } };
+  }
+
+  function shapeDef(geo){
+    var n = geo.points;
+    switch (geo.shape){
+      case 'diamond':
+        return { anchors: pts([[0,-1],[0.62,0],[0,1],[-0.62,0]]), handles: straight(4), valley:0.05, focus:{ x:0, y:0 } };
+      case 'star': {
+        var p = [];
+        for (var i = 0; i < n * 2; i++){
+          var a = -Math.PI / 2 + i * Math.PI / n, r = (i % 2) ? 0.45 : 1;
+          p.push([Math.cos(a) * r, Math.sin(a) * r, i % 2 === 0]);
+        }
+        return { anchors: pts(p), handles: straight(n * 2), valley:0.35, focus:{ x:0, y:0 } };
+      }
+      case 'heart':
+        return { anchors: pts([[0,0.95],[-0.95,-0.3],[0,-0.5],[0.95,-0.3]]),
+                 handles: hs([
+                   [[-0.45,0.55],[-0.98,0.15]],
+                   [[-0.92,-0.85],[-0.12,-0.95]],
+                   [[0.12,-0.95],[0.92,-0.85]],
+                   [[0.98,0.15],[0.45,0.55]]
+                 ]), valley:0.45, focus:{ x:0, y:0.05 } };
+      case 'note':
+        return { anchors: pts([
+                   [0.02,-0.95],[0.14,-0.95],[0.50,0.10],[0.40,-0.15],[0.14,-0.50],
+                   [0.14,0.55],[-0.30,0.90],[-0.58,0.66],[-0.12,0.36],[0.02,0.42]
+                 ]),
+                 handles: hs([
+                   null,
+                   [[0.30,-0.80],[0.62,-0.35]],
+                   [[0.52,0.00],[0.47,-0.08]],
+                   [[0.33,-0.30],[0.20,-0.45]],
+                   null,
+                   [[0.16,0.76],[-0.04,0.92]],
+                   [[-0.48,0.88],[-0.60,0.80]],
+                   [[-0.56,0.50],[-0.32,0.34]],
+                   [[-0.05,0.37],[0.00,0.39]],
+                   null
+                 ]), valley:0.55, focus:{ x:-0.2, y:0.63 } };
+      case 'cross': {
+        var w = 0.28;
+        return { anchors: pts([
+                   [-w,-1],[w,-1],[w,-w,false],[1,-w],[1,w],[w,w,false],
+                   [w,1],[-w,1],[-w,w,false],[-1,w],[-1,-w],[-w,-w,false]
+                 ]), handles: straight(12), valley:0.3, focus:{ x:0, y:0 } };
+      }
+      case 'drop':
+        return { anchors: pts([[0,-1],[0.62,0.3],[0,0.95],[-0.62,0.3]]),
+                 handles: hs([
+                   [[0.15,-0.6],[0.62,-0.12]],
+                   [[0.62,0.66],[0.34,0.95]],
+                   [[-0.34,0.95],[-0.62,0.66]],
+                   [[-0.62,-0.12],[-0.15,-0.6]]
+                 ]), valley:0.2, focus:{ x:0, y:0.32 } };
+      default:
+        return circleDef(n);
+    }
+  }
+
+  /* オフセットと曲げは図形サイズに対する比率で持つ（配列で大小が変わっても形が保たれる） */
+  function resetOffsets(geo){
+    var n = shapeDef(geo).anchors.length;
+    if (!geo.offsets) geo.offsets = [];
+    geo.offsets.length = 0;
+    for (var i = 0; i < n; i++) geo.offsets.push({ x:0, y:0 });
+  }
+  function resetBends(geo){
+    var n = shapeDef(geo).anchors.length;
+    if (!geo.bends) geo.bends = [];
+    geo.bends.length = 0;
+    for (var i = 0; i < n; i++) geo.bends.push({ x:0, y:0 });
+  }
+
+  function rot(x, y, a){ var c = Math.cos(a), s = Math.sin(a); return [x * c - y * s, x * s + y * c]; }
+
+  /*
+    頂点の計算
+    - 棘の長さ：先端の頂点だけを中心から伸び縮みさせる
+    - 曲げ（ツイスト）：先端ごとの曲げベクトル。
+        全体の曲げ（スライダー）＝ 棘の向きに垂直な方向へ一律に
+        個別の曲げ（水色ハンドル）＝ その棘だけ自由な方向へ
+  */
+  function geometry(geo){
+    var d = shapeDef(geo), R = geo.size;
+    if (!geo.offsets || geo.offsets.length !== d.anchors.length) resetOffsets(geo);
+    if (!geo.bends || geo.bends.length !== d.anchors.length) resetBends(geo);
+    var s = geo.sharp / 100;
+    var en = s < 0 ? -s : 0;
+    var spike = (geo.spike || 100) / 100;
+    var gb = (geo.twist || 0) / 100 * 0.6;
+    var gr = (geo.rot || 0) * Math.PI / 180;
+    var F = d.focus, cx = geo.x, cy = geo.y;
+    var verts = d.anchors.map(function(a, i){
+      var x = a.x - F.x, y = a.y - F.y;
+      if (!a.tip){ var f = s > 0 ? (1 - 0.8 * Math.pow(s, 0.75)) : (1 + 0.4 * en); x *= f; y *= f; }
+      else { x *= spike; y *= spike; }
+      x += F.x; y += F.y;
+      var o = geo.offsets[i] || { x:0, y:0 };
+      var tx = x + o.x, ty = y + o.y;
+      var b = rot(x, y, gr), q = rot(tx, ty, gr);
+      var dl = Math.hypot(tx - F.x, ty - F.y) || 1;
+      var dU = [(tx - F.x) / dl, (ty - F.y) / dl];
+      var bend = null;
+      if (a.tip){
+        var ub = geo.bends[i] || { x:0, y:0 };
+        var bx = ub.x + (-dU[1]) * gb, by = ub.y + dU[0] * gb;
+        if (bx !== 0 || by !== 0){ var br = rot(bx, by, gr); bend = [br[0] * R, br[1] * R]; }
+      }
+      return { bx: cx + b[0] * R, by: cy + b[1] * R, x: cx + q[0] * R, y: cy + q[1] * R,
+               preX: x, preY: y, tx: tx, ty: ty, dU: dU, tip: a.tip, bend: bend, ux: a.x, uy: a.y };
+    });
+    var fr = rot(F.x, F.y, gr);
+    return { verts:verts, def:d, R:R, n:verts.length, s:s, en:en, gr:gr,
+             fx: cx + fr[0] * R, fy: cy + fr[1] * R, cx:cx, cy:cy };
+  }
+
+  function buildPath(g){
+    var v = g.verts, n = g.n, d = g.def, R = g.R, F = d.focus;
+    var p = new Path2D();
+    p.moveTo(v[0].x, v[0].y);
+    for (var i = 0; i < n; i++){
+      var j = (i + 1) % n;
+      var A = v[i], B = v[j], h = d.handles[i], ua = d.anchors[i], ub = d.anchors[j];
+      var c1x, c1y, c2x, c2y, mx, my;
+      if (!h){
+        c1x = A.x + (B.x - A.x) / 3;     c1y = A.y + (B.y - A.y) / 3;
+        c2x = A.x + (B.x - A.x) * 2 / 3; c2y = A.y + (B.y - A.y) * 2 / 3;
+        mx = (ua.x + ub.x) / 2; my = (ua.y + ub.y) / 2;
+      } else {
+        var v1 = rot(h[0].x - ua.x, h[0].y - ua.y, g.gr);
+        var v2 = rot(h[1].x - ub.x, h[1].y - ub.y, g.gr);
+        c1x = A.x + v1[0] * R; c1y = A.y + v1[1] * R;
+        c2x = B.x + v2[0] * R; c2y = B.y + v2[1] * R;
+        mx = (ua.x + 3 * h[0].x + 3 * h[1].x + ub.x) / 8;
+        my = (ua.y + 3 * h[0].y + 3 * h[1].y + ub.y) / 8;
+      }
+      if (g.s > 0){
+        var vs = 1 + (d.valley - 1) * g.s;
+        var mr = rot(mx - F.x, my - F.y, g.gr);
+        var qx = g.fx + mr[0] * vs * R, qy = g.fy + mr[1] * vs * R;
+        var hk = 0.55 + 0.45 * g.s;
+        var e1 = Math.min(1, g.s * 4);
+        var t1x = A.x + (qx - A.x) * hk, t1y = A.y + (qy - A.y) * hk;
+        var t2x = B.x + (qx - B.x) * hk, t2y = B.y + (qy - B.y) * hk;
+        c1x += (t1x - c1x) * e1; c1y += (t1y - c1y) * e1;
+        c2x += (t2x - c2x) * e1; c2y += (t2y - c2y) * e1;
+      } else if (g.s < 0){
+        var rEdge = (Math.hypot(A.x - g.fx, A.y - g.fy) + Math.hypot(B.x - g.fx, B.y - g.fy)) / 2;
+        var push = rEdge * 0.9 * g.en;
+        var d1 = Math.hypot(c1x - g.fx, c1y - g.fy) || 1, d2 = Math.hypot(c2x - g.fx, c2y - g.fy) || 1;
+        c1x += (c1x - g.fx) / d1 * push; c1y += (c1y - g.fy) / d1 * push;
+        c2x += (c2x - g.fx) / d2 * push; c2y += (c2y - g.fy) / d2 * push;
+      }
+      /* 曲げ：先端の両脇の制御点を同じ向きにずらす → 棘がフックのように曲がる */
+      if (A.bend){ c1x += A.bend[0] * 0.9; c1y += A.bend[1] * 0.9; }
+      if (B.bend){ c2x += B.bend[0] * 0.9; c2y += B.bend[1] * 0.9; }
+      /* 頂点の両脇の制御点を覚えておく（棘の先端の正確な向き＝接線を求めるため） */
+      A.cout = [c1x, c1y]; B.cin = [c2x, c2y];
+      p.bezierCurveTo(c1x, c1y, c2x, c2y, B.x, B.y);
+    }
+    p.closePath();
+    return p;
+  }
+
+  /* =========================================================
+     配置モード
+     各インスタンスの角度 = 元の回転 ＋ 接線の向き（揃えるON時）＋ 全体の回転 ＋ 個別の回転
+     ========================================================= */
+  function cubicPt(P, t){
+    var u = 1 - t;
+    return [u*u*u*P[0][0] + 3*u*u*t*P[1][0] + 3*u*t*t*P[2][0] + t*t*t*P[3][0],
+            u*u*u*P[0][1] + 3*u*u*t*P[1][1] + 3*u*t*t*P[2][1] + t*t*t*P[3][1]];
+  }
+  function cubicTan(P, t){
+    var u = 1 - t;
+    return [3*u*u*(P[1][0]-P[0][0]) + 6*u*t*(P[2][0]-P[1][0]) + 3*t*t*(P[3][0]-P[2][0]),
+            3*u*u*(P[1][1]-P[0][1]) + 6*u*t*(P[2][1]-P[1][1]) + 3*t*t*(P[3][1]-P[2][1])];
+  }
+  function instRotArr(obj){
+    var L = obj.layout;
+    if (!L.instRot) L.instRot = { circle: [], spiral: [], chain: [] };
+    if (!L.instRot[L.mode]) L.instRot[L.mode] = [];
+    return L.instRot[L.mode];
+  }
+
+  function instances(obj){
+    var L = obj.layout, t = obj.geo, out = [];
+    if (L.mode === 'free'){ out.push({ geo:t, idx:0 }); return out; }
+    var ir = instRotArr(obj);
+    function add(x, y, size, ang){
+      var i = out.length;
+      var g = {};
+      for (var k in t) g[k] = t[k];
+      g.x = x; g.y = y; g.size = Math.max(4, size);
+      g.rot = (t.rot || 0) + (L.align ? ang * 180 / Math.PI : 0) + (L.rotAll || 0) + (ir[i] || 0);
+      out.push({ geo:g, idx:i });
+    }
+    var cx = t.x, cy = t.y;
+    if (L.mode === 'circle'){
+      var n = L.count, span = L.spacing / 100 * Math.PI * 2;
+      var full = L.spacing >= 100;
+      var step = full ? Math.PI * 2 / n : span / Math.max(1, n - 1);
+      var start = full ? -Math.PI / 2 : -Math.PI / 2 - span / 2;
+      for (var i = 0; i < n; i++){
+        var a = start + i * step;
+        add(cx + Math.cos(a) * L.extent, cy + Math.sin(a) * L.extent, t.size, a + Math.PI / 2);
+      }
+    } else if (L.mode === 'spiral'){
+      var ns = L.spCount, st = L.spStep * Math.PI / 180;
+      for (var j = 0; j < ns; j++){
+        var fr = ns > 1 ? j / (ns - 1) : 0;
+        var ang = -Math.PI / 2 + j * st;
+        var r = L.spExtent * (1 - 0.85 * fr);
+        /* 螺旋の接線方向（半径が減っていく分も考慮） */
+        var dr = -0.85 * L.spExtent / Math.max(1, (ns - 1) * st);
+        var tx0 = dr * Math.cos(ang) - r * Math.sin(ang), ty0 = dr * Math.sin(ang) + r * Math.cos(ang);
+        add(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r, t.size * (1 - L.spShrink / 100 * 0.8 * fr), Math.atan2(ty0, tx0));
+      }
+    } else if (L.mode === 'chain'){
+      var P = L.chPts.map(function(p){ return [cx + p[0], cy + p[1]]; });
+      var nc = L.chCount, taper = L.chTaper / 100;
+      var prof = function(tt){ return (1 - taper) + taper * Math.pow(Math.sin(Math.PI * tt), 0.8); };
+      var len = 0, prev = cubicPt(P, 0);
+      for (var q = 1; q <= 24; q++){ var cp = cubicPt(P, q / 24); len += Math.hypot(cp[0] - prev[0], cp[1] - prev[1]); prev = cp; }
+      for (var m = 0; m < nc; m++){
+        var tt = nc > 1 ? m / (nc - 1) : 0.5;
+        var pt = cubicPt(P, tt), tn = cubicTan(P, tt);
+        add(pt[0], pt[1], t.size * prof(tt), Math.atan2(tn[1], tn[0]) + Math.PI / 2);
+      }
+      var nb = L.chBranches;
+      for (var b = 0; b < nb; b++){
+        var tb = (b + 1) / (nb + 1);
+        var base = cubicPt(P, tb), btn = cubicTan(P, tb);
+        var side = (b % 2) ? 1 : -1;
+        var dir = Math.atan2(btn[1], btn[0]) + side * 0.9;
+        var blen = len * 0.5 * L.chBranchLen / 100 * (1 - 0.15 * b);
+        var dx = Math.cos(dir), dy = Math.sin(dir), px = -dy, py = dx;
+        var Q0 = base, Q2 = [base[0] + dx * blen, base[1] + dy * blen];
+        var Q1 = [base[0] + dx * blen * 0.5 + px * blen * 0.28 * side, base[1] + dy * blen * 0.5 + py * blen * 0.28 * side];
+        var bn = Math.max(3, Math.round(nc * 0.45 * L.chBranchLen / 100 + 2));
+        for (var k2 = 1; k2 <= bn; k2++){
+          var u2 = k2 / bn, w2 = 1 - u2;
+          var bx = w2*w2*Q0[0] + 2*w2*u2*Q1[0] + u2*u2*Q2[0];
+          var by = w2*w2*Q0[1] + 2*w2*u2*Q1[1] + u2*u2*Q2[1];
+          var tx = 2*w2*(Q1[0]-Q0[0]) + 2*u2*(Q2[0]-Q1[0]), ty = 2*w2*(Q1[1]-Q0[1]) + 2*u2*(Q2[1]-Q1[1]);
+          add(bx, by, t.size * prof(tb) * (0.85 * (1 - u2) + 0.12), Math.atan2(ty, tx) + Math.PI / 2);
+        }
+      }
+    }
+    return out;
+  }
+
+  /* オブジェクトの棘の先端（tip:true の頂点）を、並べた図形もふくめて全部集める */
+  function tipList(o){
+    var out = [];
+    if (!o || o.kind === 'orbit') return out;
+    buildItems(o).forEach(function(it){
+      if (!it.g) return;
+      it.g.verts.forEach(function(v){
+        if (!v.tip) return;
+        /* 棘の向き：図形の中心から先端へ。曲げがあればその分も反映 */
+        /* 棘の向き：先端に入ってくる側と出ていく側、2本の輪郭の接線の二等分線。
+           曲げた棘でも、実際の先端の向きにぴったり沿う */
+        var dx = 0, dy = 0;
+        if (v.cin && v.cout){
+          var ix = v.x - v.cin[0], iy = v.y - v.cin[1], il = Math.hypot(ix, iy);
+          var ox = v.x - v.cout[0], oy = v.y - v.cout[1], ol = Math.hypot(ox, oy);
+          if (il > 1e-6 && ol > 1e-6){ dx = ix / il + ox / ol; dy = iy / il + oy / ol; }
+        }
+        if (Math.hypot(dx, dy) < 1e-4){
+          dx = v.x - it.fx; dy = v.y - it.fy;
+          if (v.bend){ dx += v.bend[0] * 0.6; dy += v.bend[1] * 0.6; }
+        }
+        var dl = Math.hypot(dx, dy) || 1;
+        out.push([v.x, v.y, dx / dl, dy / dl]);
+      });
+    });
+    return out;
+  }
+
+  /* ループの両端の頂点を決める：番号の指定があればそれ、なければ互いに一番近い先端どうし */
+  /*
+    自動のときの選び方：
+    - outer（初期値）：Aでは「Bと反対側を向いている棘」、Bでは「Aと反対側を向いている棘」。
+      2つの星を外側の棘どうしで結ぶので、輪が2つの星をまとめて包む（参考画像の形）
+    - near：互いに一番近い棘どうし（向かい合う棘を短くつなぐ）
+  */
+  function pickOuter(tips, ux, uy, center){
+    var best = null, bs = -1e18;
+    tips.forEach(function(t){
+      var dist = Math.hypot(t[0] - center[0], t[1] - center[1]);
+      var sc = (t[2] * ux + t[3] * uy) * 1000 + dist;
+      if (sc > bs){ bs = sc; best = t; }
+    });
+    return best;
+  }
+  function orbitEnds(O){
+    var A = findObj(O.a), B = findObj(O.b);
+    if (A && B && A === B) B = null;          /* 同じオブジェクトどうしはつながない */
+    var ta = tipList(A), tb = tipList(B);
+    var pa = null, pb = null;
+    if (ta.length && O.va > 0) pa = ta[(O.va - 1) % ta.length];
+    if (tb.length && O.vb > 0) pb = tb[(O.vb - 1) % tb.length];
+    if (ta.length && tb.length && (!pa || !pb)){
+      if ((O.autoMode || 'outer') === 'outer'){
+        var ca = centerOf(A), cb = centerOf(B);
+        var dx = cb[0] - ca[0], dy = cb[1] - ca[1], dl = Math.hypot(dx, dy) || 1;
+        var ux = dx / dl, uy = dy / dl;
+        if (!pa) pa = pickOuter(ta, -ux, -uy, cb);
+        if (!pb) pb = pickOuter(tb, ux, uy, ca);
+      } else {
+        if (!pa && !pb){
+          var bd = 1e18;
+          ta.forEach(function(p){ tb.forEach(function(q){
+            var dd = (p[0] - q[0]) * (p[0] - q[0]) + (p[1] - q[1]) * (p[1] - q[1]);
+            if (dd < bd){ bd = dd; pa = p; pb = q; }
+          }); });
+        } else if (!pa){
+          var b1 = 1e18; ta.forEach(function(p){ var dd = Math.hypot(p[0] - pb[0], p[1] - pb[1]); if (dd < b1){ b1 = dd; pa = p; } });
+        } else {
+          var b2 = 1e18; tb.forEach(function(q){ var dd = Math.hypot(q[0] - pa[0], q[1] - pa[1]); if (dd < b2){ b2 = dd; pb = q; } });
+        }
+      }
+    }
+    if (pa){ O.pA = [pa[0], pa[1]]; O.dA = [pa[2], pa[3]]; }
+    if (pb){ O.pB = [pb[0], pb[1]]; O.dB = [pb[2], pb[3]]; }
+    return [O.pA, O.pB];
+  }
+
+  function cubicAt(p0, p1, p2, p3, t){
+    var u = 1 - t;
+    return [u*u*u*p0[0] + 3*u*u*t*p1[0] + 3*u*t*t*p2[0] + t*t*t*p3[0],
+            u*u*u*p0[1] + 3*u*u*t*p1[1] + 3*u*t*t*p2[1] + t*t*t*p3[1]];
+  }
+
+  /*
+    ループ（接続線）のパス：Aの頂点からBの頂点へ「直接1本」の3次ベジェ曲線。
+      moveTo(Aの頂点) → bezierCurveTo(cp1, cp2, Bの頂点)
+    制御点の計算（d = 2点間の距離、u = AからBへの単位ベクトル、n = uに垂直な単位ベクトル）
+      基本の向き：cp1 は A から u 方向へ d/3、cp2 は B から −u 方向へ d/3（＝まっすぐな線）
+      棘の向きに沿わせる：基本の向きを、それぞれの棘が向いている方向へ寄せる（0〜100%）
+      カーブのふくらみ：両方の制御点を n 方向へ ふくらみ×d だけずらす（＋で片側、−で反対側へたわむ）
+      S字：cp2 だけ逆側へずらして、S字にうねらせる
+    楕円や輪を作る処理は使わない。始点と終点は必ず2つの頂点そのもの。
+  */
+  function orbitItems(obj){
+    var O = obj.orbit;
+    var ends = orbitEnds(O);
+    var pa = ends[0], pb = ends[1];
+    var dx = pb[0] - pa[0], dy = pb[1] - pa[1], d = Math.hypot(dx, dy) || 1;
+    var ux = dx / d, uy = dy / d, nx = -uy, ny = ux;
+    var fol = (O.follow === undefined ? 50 : O.follow) / 100;
+    var da = O.dA || [ux, uy], db = O.dB || [-ux, -uy];
+    function mix(base, spike){
+      var x = base[0] * (1 - fol) + spike[0] * fol, y = base[1] * (1 - fol) + spike[1] * fol;
+      var l = Math.hypot(x, y) || 1;
+      return [x / l, y / l];
+    }
+    var t1 = mix([ux, uy], da), t2 = mix([-ux, -uy], db);
+    /* 線が棘の先でいったん逆向きに出て折れ曲がらないよう、ハンドルの向きは
+       必ず相手の方向（前向き）の成分を持たせる（Illustratorでいう「スムーズポイント」の状態を保つ） */
+    function forward(t, fx, fy){
+      var dt = t[0] * fx + t[1] * fy;
+      if (dt >= 0.25) return t;
+      var k = (0.25 - dt);
+      var x = t[0] + fx * k * 1.2, y = t[1] + fy * k * 1.2, l = Math.hypot(x, y) || 1;
+      return [x / l, y / l];
+    }
+    t1 = forward(t1, ux, uy); t2 = forward(t2, -ux, -uy);
+    /* ハンドルの長さ（線の向きに沿った成分）：A側・B側それぞれ、2点間の距離に対する割合 */
+    var arm1 = d * (O.arm1 === undefined ? 33 : O.arm1) / 100;
+    var arm2 = d * (O.arm2 === undefined ? 33 : O.arm2) / 100;
+    var bul = (O.bulge === undefined ? 30 : O.bulge) / 100 * d;
+    /*
+      カーブの方向（Direction）φ：2つの制御点を線の左右どちらへずらすかを、1本のつまみで連続的に回す。
+        s1 = √2·cos(φ − 45°) … cp1 のずらし量（＋で右、−で左）
+        s2 = √2·cos(φ + 45°) … cp2 のずらし量
+        φ =   0° → s1=+1, s2=+1 … 右にふくらむ弧（C字）
+        φ =  90° → s1=+1, s2=−1 … S字
+        φ = 180° → s1=−1, s2=−1 … 左にふくらむ弧
+        φ = −90° → s1=−1, s2=+1 … 逆S字
+        その間の角度では、片側だけが強く曲がる非対称な弧になる。
+      (s1, s2) の長さはどの角度でも同じなので、方向を回してもたわみの「量」は変わらない。
+      カーブの膨らみ（Strength）bul は、そのずらし量の大きさ。0 で直線に近づく。
+      始点（Aの頂点）と終点（Bの頂点）は固定のまま、制御点だけが動くので、
+      線はゴム紐のように中間だけがたわむ。
+    */
+    var phi = (O.dir || 0) * Math.PI / 180;
+    var s1 = Math.SQRT2 * Math.cos(phi - Math.PI / 4);
+    var s2 = Math.SQRT2 * Math.cos(phi + Math.PI / 4);
+    var cp1, cp2;
+    if (O.tangent !== false){
+      /*
+        棘に沿ってなめらかに出す（初期値）：
+        制御点を「棘の先端から、棘の向きにまっすぐ伸ばした線上」に置く。
+        ベジェ曲線は始点で cp1 の方向へ出ていくので、線の出だしの角度が棘の角度とぴったり一致し、
+        先端から継ぎ目なく「スッ」と伸び出す（終点側も同じ）。
+        カーブの大きさは、この腕の長さ（ハンドルの長さ ×（1＋膨らみ））で決める。
+      */
+      var tA = O.dA || [ux, uy], tB = O.dB || [-ux, -uy];
+      var big = 1 + (O.bulge === undefined ? 30 : O.bulge) / 100;
+      var L1 = Math.max(0, arm1 * big), L2 = Math.max(0, arm2 * big);
+      cp1 = [pa[0] + tA[0] * L1, pa[1] + tA[1] * L1];
+      cp2 = [pb[0] + tB[0] * L2, pb[1] + tB[1] * L2];
+      t1 = tA; t2 = tB;
+    } else {
+      cp1 = [pa[0] + t1[0] * arm1 + nx * bul * s1, pa[1] + t1[1] * arm1 + ny * bul * s1];
+      cp2 = [pb[0] + t2[0] * arm2 + nx * bul * s2, pb[1] + t2[1] * arm2 + ny * bul * s2];
+    }
+    O._cp = [cp1, cp2, pa, pb];
+    /* 白い四角のドラッグから逆算するための基準（端点・線の向き・垂直方向・距離） */
+    O._basis = { pa:pa, pb:pb, t1:t1, t2:t2, n:[nx, ny], d:d };
+    var line = new Path2D();
+    line.moveTo(pa[0], pa[1]);
+    line.bezierCurveTo(cp1[0], cp1[1], cp2[0], cp2[1], pb[0], pb[1]);
+    /* グラデーションと太さの変化のために、曲線上の点も取っておく */
+    /* 線の太さ（State）：connection.lineWidth（px）。旧データの thick も読めるように */
+    var LW = O.lineWidth !== undefined ? O.lineWidth : (O.thick !== undefined ? O.thick : 12);
+    var uniform = (O.startW === undefined || O.startW === 100) && (O.endW === undefined || O.endW === 100) && !O.taper && !O.tipThin;
+    var N = 240, Pt = [], Wd = [], maxW = 0;
+    for (var i = 0; i <= N; i++){
+      var t = i / N;
+      Pt.push(cubicAt(pa, cp1, cp2, pb, t));
+      var mid = Math.sin(Math.PI * t);
+      /* 始点・終点の太さ（入り・抜き）：A側からB側へ、太さの割合をなめらかに移す（smoothstep で筆のような変化） */
+      var sw = (O.startW === undefined ? 100 : O.startW) / 100, ew = (O.endW === undefined ? 100 : O.endW) / 100;
+      var te = t * t * (3 - 2 * t);
+      var h = LW / 2 * (sw + (ew - sw) * te);          /* 線の太さ＝見た目の幅（px）。中心線から左右に半分ずつ */
+      h *= 1 + (O.taper / 100) * 0.8 * (mid - 0.5);                          /* 中央の太さ */
+      /* 両端の細さ（リボンの形）：端の太さ = 1 − 両端の細さ、中央に向かって sin カーブでふっくら太くなる */
+      var endR = 1 - (O.tipThin === undefined ? 0 : O.tipThin) / 100;
+      h *= endR + (1 - endR) * Math.pow(mid, 1.15);     /* 先端付近はごく細く、中央へ向かってゆるやかにふくらむ */
+      h = Math.max(0.35, h);
+      Wd.push(h);
+      if (h > maxW) maxW = h;
+    }
+    /*
+      継ぎ目を消す工夫：線の両端を、棘の先端から棘の内側（根元の方向）へほんの少しだけ延長する。
+      線は星の背面に描くので、延長した部分は棘に隠れて見えず、
+      棘の先端と線の間にアンチエイリアスの隙間（髪の毛ほどの切れ目）ができない。
+      線は棘の中から生まれて、先端から外へ溶け出すように見える。
+    */
+    if (O.tangent !== false && O.dA && O.dB){
+      var ext = Math.min(10, Math.max(3, LW * 0.6));
+      var inA = [pa[0] - O.dA[0] * ext, pa[1] - O.dA[1] * ext];
+      var inB = [pb[0] - O.dB[0] * ext, pb[1] - O.dB[1] * ext];
+      Pt.unshift(inA); Wd.unshift(Wd[0]);
+      Pt.push(inB); Wd.push(Wd[Wd.length - 1]);
+      line = new Path2D();
+      line.moveTo(inA[0], inA[1]); line.lineTo(pa[0], pa[1]);
+      line.bezierCurveTo(cp1[0], cp1[1], cp2[0], cp2[1], pb[0], pb[1]);
+      line.lineTo(inB[0], inB[1]);
+    }
+    var mx = (pa[0] + pb[0]) / 2, my = (pa[1] + pb[1]) / 2;
+    obj.geo.x = mx; obj.geo.y = my;
+    return [{ kind:'tube', open:true, uniform:uniform, lineWidth:LW, pts:Pt, ws:Wd, maxW:maxW, line:line, path:null, idx:0, g:null,
+              fx:mx, fy:my, geo:{ size: Math.max(24, LW * 1.5), x:mx, y:my } }];
+  }
+
+  /* 細いチューブを、場所ごとの太さで区間ごとに描く（f＝太さの倍率） */
+  /*
+    太さが場所ごとに変わる線の「輪郭」を1つの閉じた図形として作る。
+    中心線の各点で法線方向へ ±太さ だけずらした左右の縁をつなぎ、両端は半円で丸く閉じる。
+    1本の連続した図形なので、区間の継ぎ目・途切れ・カクつきが原理的に起きない。
+    （太さが一定なら ctx.lineWidth = 2×太さ、lineCap = 'round' で引いた線と同じ形になる）
+  */
+  function tubeOutline(it, f, shift){
+    /* shift：中心線を、その場所の太さに対する割合だけ横へずらす（つやの帯に使う） */
+    var P = it.pts, n = P.length, Lf = [], Rt = [], Nn = [], Cc = [];
+    var sh = shift || 0;
+    for (var i = 0; i < n; i++){
+      var a = P[Math.max(0, i - 1)], b = P[Math.min(n - 1, i + 1)];
+      var tx = b[0] - a[0], ty = b[1] - a[1], tl = Math.hypot(tx, ty) || 1;
+      var nx = -ty / tl, ny = tx / tl, h = Math.max(0.15, it.ws[i] * f);
+      var cx = P[i][0] + nx * it.ws[i] * sh, cy = P[i][1] + ny * it.ws[i] * sh;
+      Nn.push([nx, ny]); Cc.push([cx, cy]);
+      Lf.push([cx + nx * h, cy + ny * h]);
+      Rt.push([cx - nx * h, cy - ny * h]);
+    }
+    var path = new Path2D();
+    path.moveTo(Lf[0][0], Lf[0][1]);
+    for (var j = 1; j < n; j++) path.lineTo(Lf[j][0], Lf[j][1]);
+    var e = Cc[n - 1], ae = Math.atan2(Nn[n - 1][1], Nn[n - 1][0]);
+    path.arc(e[0], e[1], Math.max(0.15, it.ws[n - 1] * f), ae, ae - Math.PI, true);   /* 終点の丸い端 */
+    for (var k = n - 2; k >= 0; k--) path.lineTo(Rt[k][0], Rt[k][1]);
+    var st = Cc[0], as = Math.atan2(Nn[0][1], Nn[0][0]);
+    path.arc(st[0], st[1], Math.max(0.15, it.ws[0] * f), as + Math.PI, as, true);   /* 始点の丸い端 */
+    path.closePath();
+    return path;
+  }
+
+  function strokeTube(c, it, f){
+    var NP = it.pts.length, segs = it.open ? NP - 1 : NP;
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    for (var i = 0; i < segs; i++){
+      var q0 = it.pts[i], q1 = it.pts[(i + 1) % NP];
+      c.lineWidth = Math.max(0.3, (it.ws[i] + it.ws[(i + 1) % NP]) * f);
+      c.beginPath(); c.moveTo(q0[0], q0[1]); c.lineTo(q1[0], q1[1]); c.stroke();
+    }
+  }
+
+  function buildItems(obj){
+    if (obj.kind === 'orbit') return orbitItems(obj);
+    return instances(obj).map(function(it){
+      var g = geometry(it.geo);
+      return { geo:it.geo, idx:it.idx, g:g, path:buildPath(g), fx:g.fx, fy:g.fy };
+    });
+  }
+
+  /* =========================================================
+     メタボール融合（シーン全体で1つ）
+     1) 各図形のゲージ値 u（形を何倍すればその点を含むか）を求める。
+        u<1 が図形の内側、u=1 が輪郭。等高線はその図形の形そのもの。
+        → 色のグラデーションは「一番小さい u」で決める（形に沿った繊細なグラデーション）。
+        → 図形の中身は u<1 なので必ず中身が詰まる（穴が開かない）。
+     2) 融合（くっつく部分）は、Canvasの定番どおり
+        「白で塗った形のマスク → ぼかし → しきい値でシャープに」で作る。
+        ただし、ぼかしで1つの星の谷まで埋まって丸くなるのを防ぐため、
+        『2つ以上の図形が近くにある場所』だけにつなぎ目を足す。
+        最終の形 = 元の形 ∪ つなぎ目。元の形は一切削られない。
+     3) オブジェクトごとの持ち分（色や光の受け渡し）は u^-8 の比で決める。
+     ========================================================= */
+  var FSTEPS = (function(){
+    var a = [];
+    for (var j = 0; j < 30; j++) a.push(6 - 5 * j / 30);
+    for (j = 0; j < 48; j++) a.push(1 - j / 48);
+    return a;
+  })();
+  function codeOf(f){ return f <= 1 ? f * 170 : 170 + (f - 1) * 17; }
+  var FCODES = FSTEPS.map(function(f){ return Math.round(codeOf(f)); });
+  var fDecode = new Float64Array(256);
+  for (var cc = 0; cc < 256; cc++) fDecode[cc] = Math.max(0.004, cc <= 170 ? cc / 170 : 1 + (cc - 170) / 17);
+  var powW = new Float64Array(256);
+  for (cc = 0; cc < 255; cc++) powW[cc] = Math.pow(fDecode[cc], -8);
+  powW[255] = 0;
+
+  var accBuf = new Float64Array(WW);          /* 持ち分の合計 */
+  var Ubuf   = new Float32Array(WW);          /* 一番小さいゲージ値（色用） */
+  var U2buf  = new Float32Array(WW);          /* 2番目に小さいゲージ値（別の図形が近いか） */
+  var Iown   = new Int32Array(WW);            /* 一番小さい u を持つ図形の番号 */
+  var Ain    = new Float32Array(WW);          /* 元の形のアルファ（アンチエイリアス込み） */
+  var Abuf   = new Float32Array(WW);          /* 最終の形のアルファ（元の形 ∪ つなぎ目） */
+  var Bt1    = new Float32Array(WW), Bt2 = new Float32Array(WW);
+  var oinv = mk(), oictx = oinv.getContext('2d');
+  var objAcc = [];
+  var sceneAvgSize = 100;
+
+  /* 横・縦に分けたボックスぼかし（3回かけるとガウスぼかしに近くなる） */
+  function boxBlur(src, dst, tmpA, r){
+    if (r < 1){ dst.set(src); return; }
+    var rr = Math.round(r), inv = 1 / (2 * rr + 1);
+    var a = src, b = tmpA;
+    for (var pass = 0; pass < 3; pass++){
+      for (var y = 0; y < W; y++){
+        var row = y * W, sum = 0;
+        for (var k = -rr; k <= rr; k++){ var xx = k < 0 ? 0 : (k >= W ? W - 1 : k); sum += a[row + xx]; }
+        for (var x = 0; x < W; x++){
+          b[row + x] = sum * inv;
+          var xo = x - rr, xi = x + rr + 1;
+          sum += a[row + (xi >= W ? W - 1 : xi)] - a[row + (xo < 0 ? 0 : xo)];
+        }
+      }
+      for (var x2 = 0; x2 < W; x2++){
+        var sum2 = 0;
+        for (var k2 = -rr; k2 <= rr; k2++){ var yy = k2 < 0 ? 0 : (k2 >= W ? W - 1 : k2); sum2 += b[yy * W + x2]; }
+        for (var y2 = 0; y2 < W; y2++){
+          dst[y2 * W + x2] = sum2 * inv;
+          var yo = y2 - rr, yi = y2 + rr + 1;
+          sum2 += b[(yi >= W ? W - 1 : yi) * W + x2] - b[(yo < 0 ? 0 : yo) * W + x2];
+        }
+      }
+      a = dst;
+    }
+  }
+
+  function computeSceneField(all){
+    accBuf.fill(0); Ubuf.fill(99); U2buf.fill(99); Iown.fill(-1); Ain.fill(0);
+    while (objAcc.length < all.length) objAcc.push(new Float64Array(WW));
+    for (var o = 0; o < all.length; o++) objAcc[o].fill(0);
+    var sumSize = 0, cnt = 0, itemNo = 0;
+    all.forEach(function(entry, oi){
+      var acc = objAcc[oi];
+      /* ループは「本体と溶け合わせる」がONのときだけ融合に参加。OFFなら独立した線として描く */
+      if (entry.obj.kind === 'orbit' && !entry.obj.orbit.fuse) return;
+      entry.items.forEach(function(it){
+        var myNo = itemNo++;
+        sumSize += it.geo.size; cnt++;
+        var minx = 1e9, miny = 1e9, maxx = -1e9, maxy = -1e9;
+        var isTube = it.kind === 'tube';
+        var x0, x1, y0, y1;
+        if (isTube){
+          it.pts.forEach(function(q){
+            if (q[0] < minx) minx = q[0]; if (q[0] > maxx) maxx = q[0];
+            if (q[1] < miny) miny = q[1]; if (q[1] > maxy) maxy = q[1];
+          });
+          var tp = it.maxW * 6.2 + 4;
+          x0 = minx - tp; x1 = maxx + tp; y0 = miny - tp; y1 = maxy + tp;
+        } else {
+          it.g.verts.forEach(function(v){
+            if (v.x < minx) minx = v.x; if (v.x > maxx) maxx = v.x;
+            if (v.y < miny) miny = v.y; if (v.y > maxy) maxy = v.y;
+          });
+          var pad = it.geo.size * 0.6;
+          minx -= pad; miny -= pad; maxx += pad; maxy += pad;
+          x0 = it.fx + (minx - it.fx) * 6; x1 = it.fx + (maxx - it.fx) * 6;
+          y0 = it.fy + (miny - it.fy) * 6; y1 = it.fy + (maxy - it.fy) * 6;
+        }
+        var lx0 = Math.max(0, Math.floor(x0 * KW)), ly0 = Math.max(0, Math.floor(y0 * KW));
+        var lx1 = Math.min(W, Math.ceil(x1 * KW)),  ly1 = Math.min(W, Math.ceil(y1 * KW));
+        var lw = lx1 - lx0, lh = ly1 - ly0;
+        if (lw <= 0 || lh <= 0) return;
+        gctx.setTransform(1, 0, 0, 1, 0, 0);
+        gctx.globalCompositeOperation = 'source-over';
+        gctx.fillStyle = '#ffffff';
+        gctx.fillRect(lx0, ly0, lw, lh);
+        gctx.setTransform(KW, 0, 0, KW, 0, 0);
+        if (isTube){
+          gctx.lineCap = 'round'; gctx.lineJoin = 'round';
+          var NP = it.pts.length, segs = it.open ? NP - 1 : NP;
+          for (var jt = 0; jt < FSTEPS.length; jt++){
+            var codeT = FCODES[jt], ft = FSTEPS[jt];
+            gctx.strokeStyle = 'rgb(' + codeT + ',' + codeT + ',' + codeT + ')';
+            for (var s2 = 0; s2 < segs; s2++){
+              var q0 = it.pts[s2], q1 = it.pts[(s2 + 1) % NP];
+              gctx.lineWidth = Math.max(0.01, (it.ws[s2] + it.ws[(s2 + 1) % NP]) * ft);
+              gctx.beginPath(); gctx.moveTo(q0[0], q0[1]); gctx.lineTo(q1[0], q1[1]); gctx.stroke();
+            }
+          }
+        } else {
+          for (var j = 0; j < FSTEPS.length; j++){
+            var code = FCODES[j], f = FSTEPS[j];
+            gctx.fillStyle = 'rgb(' + code + ',' + code + ',' + code + ')';
+            gctx.save();
+            gctx.translate(it.fx, it.fy); gctx.scale(f, f); gctx.translate(-it.fx, -it.fy);
+            gctx.fill(it.path);
+            gctx.restore();
+          }
+        }
+        /* その図形の大きさに合わせたアンチエイリアス幅 */
+        var Rl = Math.max(1.5, (isTube ? it.maxW : it.geo.size) * KW) * 0.9;
+        var d = gctx.getImageData(lx0, ly0, lw, lh).data;
+        for (var yy = 0; yy < lh; yy++){
+          var row = (ly0 + yy) * W + lx0, di = yy * lw * 4;
+          for (var xx = 0; xx < lw; xx++, di += 4){
+            var cd = d[di];
+            if (cd >= 255) continue;
+            var idx = row + xx, u = fDecode[cd];
+            if (u < Ubuf[idx]){ U2buf[idx] = Ubuf[idx]; Ubuf[idx] = u; Iown[idx] = myNo; }
+            else if (u < U2buf[idx]) U2buf[idx] = u;
+            var aa = (1 - u) * Rl + 0.5;
+            if (aa > Ain[idx]) Ain[idx] = aa > 1 ? 1 : aa;
+            var v = powW[cd];
+            acc[idx] += v; accBuf[idx] += v;
+          }
+        }
+      });
+    });
+    sceneAvgSize = cnt ? sumSize / cnt : 100;
+
+    /* --- つなぎ目：ぼかし → しきい値 --- */
+    Abuf.set(Ain);
+    if (G.fuseOn && cnt > 1 && G.fuseAmt > 0){
+      var fz = G.fuseAmt / 100;
+      var radius = Math.max(1, sceneAvgSize * KW * (0.12 + 2.2 * Math.pow(fz, 1.15)));
+      boxBlur(Ain, Bt1, Bt2, radius / 1.7);
+      /* しきい値：なめらかさを上げるほど下がり、遠くの図形どうしもつながる。つなぎ目の太さ＋でさらに下げて首を太く */
+      var th = Math.max(0.05, 0.5 - 0.3 * fz - (G.neckAmt || 0) / 100 * 0.25);
+      var reach = 1 + 4 * fz;                                   /* どれだけ離れた図形どうしまでつなぐか（最大で図形5個分） */
+      for (var i = 0; i < WW; i++){
+        if (Ain[i] >= 1) continue;
+        var u2 = U2buf[i];
+        if (u2 >= reach) continue;                              /* 近くに2つ目の図形がない → つなぎ目を作らない（1つの星の谷は埋めない） */
+        var bv = Bt1[i];
+        /* しきい値でシャープに：ぼかし値の傾きから1ピクセル分だけのアンチエイリアス幅を取る
+           （ぼんやりしたフチにならず、水滴のようにくっきりした輪郭になる） */
+        var xm = i % W, ym = (i / W) | 0;
+        var gx = (Bt1[xm < W - 1 ? i + 1 : i] - Bt1[xm > 0 ? i - 1 : i]) * 0.5;
+        var gy = (Bt1[ym < W - 1 ? i + W : i] - Bt1[ym > 0 ? i - W : i]) * 0.5;
+        var gr = Math.sqrt(gx * gx + gy * gy);
+        if (gr < 1e-5) gr = 1e-5;
+        var m = (bv - th) / gr * 0.9 + 0.5;
+        if (m <= 0) continue;
+        if (m > 1) m = 1;
+        var gate = (reach - u2) / 0.5; if (gate > 1) gate = 1;
+        m *= gate;
+        if (m > Abuf[i]) Abuf[i] = m;
+      }
+    }
+  }
+
+  /* シーン全体の融合形（輪郭線の外抜き・内側のリムに使う） */
+  /* 図形の形をフル解像度のベクターで塗る（棘の先端まで1ピクセルも欠けない） */
+  function fillVectorShapes(c, items){
+    c.fillStyle = '#ffffff'; c.strokeStyle = '#ffffff';
+    items.forEach(function(it){
+      if (it.kind === 'tube') c.fill(tubeOutline(it, 1));
+      else c.fill(it.path);
+    });
+  }
+  function buildGroupMask(all){
+    var img = alctx.createImageData(W, W), d = img.data;
+    for (var i = 0, j = 0; i < WW; i++, j += 4){
+      var a = Abuf[i];
+      if (a <= 0) continue;
+      d[j] = 255; d[j + 1] = 255; d[j + 2] = 255; d[j + 3] = a * 255;
+    }
+    resetCtx(alctx);
+    alctx.putImageData(img, 0, 0);
+    /* 全体の形 = フル解像度のベクターの形 ∪ 融合のつなぎ目（低解像度） */
+    clearCtx(gmctx);
+    (all || []).forEach(function(entry){
+      if (entry.obj.kind === 'orbit' && !entry.obj.orbit.fuse) return;
+      fillVectorShapes(gmctx, entry.items);
+    });
+    resetCtx(gmctx);
+    gmctx.globalCompositeOperation = 'lighter';
+    gmctx.imageSmoothingQuality = 'high';
+    gmctx.drawImage(aLow, 0, 0, S, S);
+    resetCtx(gmctx);
+    clearCtx(gictx);
+    gictx.fillStyle = '#ffffff';
+    gictx.fillRect(0, 0, S, S);
+    gictx.globalCompositeOperation = 'destination-out';
+    gictx.drawImage(gmask, 0, 0);
+    resetCtx(gictx);
+  }
+
+  /* =========================================================
+     色
+     ========================================================= */
+  function hexToLin(hex){
+    var v = parseInt(hex.replace('#', ''), 16);
+    return [Math.pow(((v >> 16) & 255) / 255, 2.2), Math.pow(((v >> 8) & 255) / 255, 2.2), Math.pow((v & 255) / 255, 2.2)];
+  }
+  function clamp01(x){ return x < 0 ? 0 : (x > 1 ? 1 : x); }
+  function toSRGB(v){ return Math.round(255 * Math.pow(clamp01(v), 1 / 2.2)); }
+  function rgba(lin, a){
+    return 'rgba(' + toSRGB(lin[0]) + ',' + toSRGB(lin[1]) + ',' + toSRGB(lin[2]) + ',' + clamp01(a).toFixed(4) + ')';
+  }
+  function interp(stops, t){
+    t = clamp01(t);
+    for (var i = 0; i < stops.length - 1; i++){
+      var a = stops[i], b = stops[i + 1];
+      if (t <= b[0]){
+        var u = (t - a[0]) / (b[0] - a[0]);
+        u = u * u * (3 - 2 * u);
+        return [a[1][0] + (b[1][0] - a[1][0]) * u, a[1][1] + (b[1][1] - a[1][1]) * u, a[1][2] + (b[1][2] - a[1][2]) * u];
+      }
+    }
+    return stops[stops.length - 1][1];
+  }
+  var palCache = {};
+  /* 図形本体の色（ベースカラー） */
+  function pal(L, t){
+    var key = [L.core, L.mid, L.outer, L.midPos, L.outerPos].join('|');
+    var c = palCache[key];
+    if (!c){
+      var op = Math.max(0.05, L.outerPos / 100);
+      var mp = Math.min(op - 0.02, Math.max(0.01, L.midPos / 100));
+      c = [[0, hexToLin(L.core)], [mp, hexToLin(L.mid)], [op, hexToLin(L.outer)]];
+      if (op < 1) c.push([1, hexToLin(L.outer)]);
+      palCache[key] = c;
+    }
+    return interp(c, t);
+  }
+  /* 光専用の色：中心は白 → 光の色を少し含んだ白 → 指定した光の色 */
+  function glowColorOf(L){ return L.glowAuto ? L.outer : L.glowColor; }
+  function gpal(L, t){
+    var gc = glowColorOf(L);
+    var key = 'g|' + gc;
+    var c = palCache[key];
+    if (!c){
+      var g = hexToLin(gc);
+      c = [[0, [1, 1, 1]],
+           [0.22, [1 - (1 - g[0]) * 0.35, 1 - (1 - g[1]) * 0.35, 1 - (1 - g[2]) * 0.35]],
+           [0.55, [1 - (1 - g[0]) * 0.85, 1 - (1 - g[1]) * 0.85, 1 - (1 - g[2]) * 0.85]],
+           [1, g]];
+      palCache[key] = c;
+    }
+    return interp(c, t);
+  }
+  function colorLUT(L){
+    var lut = new Uint8ClampedArray(256 * 3);
+    for (var k = 0; k < 256; k++){
+      var c = pal(L, k / 255);
+      lut[k * 3] = toSRGB(c[0]); lut[k * 3 + 1] = toSRGB(c[1]); lut[k * 3 + 2] = toSRGB(c[2]);
+    }
+    return lut;
+  }
+
+  /* =========================================================
+     描画ユーティリティ
+     ========================================================= */
+  function fillScaled(c, path, fx, fy, f){
+    c.save();
+    c.translate(fx, fy); c.scale(f, f); c.translate(-fx, -fy);
+    c.fill(path);
+    c.restore();
+  }
+  function resetCtx(c){
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.globalAlpha = 1;
+    c.globalCompositeOperation = 'source-over';
+    c.shadowBlur = 0; c.shadowColor = 'transparent';
+    c.shadowOffsetX = 0; c.shadowOffsetY = 0;
+    c.lineJoin = 'miter'; c.miterLimit = 10;
+    c.imageSmoothingEnabled = true;
+  }
+  function clearCtx(c){ resetCtx(c); c.clearRect(0, 0, S, S); }
+
+  function buildTint(color){
+    clearCtx(tnctx);
+    tnctx.drawImage(mask, 0, 0);
+    tnctx.globalCompositeOperation = 'source-in';
+    tnctx.fillStyle = color;
+    tnctx.fillRect(0, 0, S, S);
+    tnctx.globalCompositeOperation = 'source-over';
+  }
+  function drawTintGlow(c, blur, color, alpha){
+    var rem = alpha;
+    c.shadowBlur = Math.min(900, Math.max(0.5, blur));
+    c.shadowColor = color;
+    while (rem > 0.002){
+      c.globalAlpha = Math.min(1, rem);
+      c.drawImage(tint, 0, 0);
+      rem -= 1;
+    }
+  }
+
+  function drawCross(fc, L, x, y, R){
+    var xI = L.crossInt / 100;
+    var len = R * (0.8 + 6 * L.crossLen / 100);
+    var xw = R * (0.02 + 0.25 * L.crossWidth / 100);
+    var layers = [
+      { w: xw * 0.12, a: 1.0,  blur: 0 },
+      { w: xw * 0.45, a: 0.5,  blur: 0.4 },
+      { w: xw * 1.4,  a: 0.22, blur: 0.8 },
+      { w: xw * 3.2,  a: 0.08, blur: 1.2 }
+    ];
+    fc.save();
+    fc.globalCompositeOperation = 'lighter';
+    fc.translate(x, y);
+    fc.rotate(L.crossAngle * Math.PI / 180);
+    for (var ax = 0; ax < 2; ax++){
+      fc.save();
+      fc.rotate(ax * Math.PI / 2);
+      layers.forEach(function(ly){
+        var lgr = fc.createLinearGradient(-len, 0, len, 0);
+        for (var k7 = 0; k7 <= 48; k7++){
+          var t7 = k7 / 48, u = Math.abs(t7 * 2 - 1);
+          var a7 = ly.a * xI * (0.75 * Math.exp(-u * 4) + 0.25 * (1 - u)) * Math.pow(1 - u, 1.2);
+          lgr.addColorStop(t7, rgba(gpal(L, u), a7));
+        }
+        fc.fillStyle = lgr;
+        fc.shadowBlur = ly.w * ly.blur;
+        fc.shadowColor = rgba(gpal(L, 0.6), 0.3 * xI * ly.a);
+        fc.beginPath();
+        fc.moveTo(-len, 0);
+        fc.quadraticCurveTo(-len * 0.12, -ly.w * 0.12, 0, -ly.w);
+        fc.quadraticCurveTo(len * 0.12, -ly.w * 0.12, len, 0);
+        fc.quadraticCurveTo(len * 0.12, ly.w * 0.12, 0, ly.w);
+        fc.quadraticCurveTo(-len * 0.12, ly.w * 0.12, -len, 0);
+        fc.closePath();
+        fc.fill();
+      });
+      fc.restore();
+    }
+    fc.restore();
+  }
+
+  /* =========================================================
+     1オブジェクトのレンダリング（シーンの融合フィールドの「持ち分」を描く）
+     ========================================================= */
+  function renderObject(obj, oi, items){
+    var L = obj.light;
+    /* 接続線の色：つないだ図形のベースカラーを引き継ぐ（初期値）か、線自身の色か */
+    var LA = L, LB = L;
+    if (obj.kind === 'orbit' && (obj.orbit.colorMode || 'inherit') === 'inherit'){
+      var oA = findObj(obj.orbit.a), oB = findObj(obj.orbit.b);
+      LA = oA ? oA.light : L; LB = oB ? oB.light : LA;
+      var Lc = {};
+      for (var key in L) Lc[key] = L[key];
+      ['core', 'mid', 'outer', 'midPos', 'outerPos', 'coreSize', 'glowAuto', 'glowColor'].forEach(function(kk){ Lc[kk] = LA[kk]; });
+      L = Lc;
+    }
+    /* 線の光は、太い面より控えめで柔らかく */
+    var soft = obj.kind === 'orbit' ? 0.45 : 1;
+    clearCtx(obctx); clearCtx(obdctx); clearCtx(ofctx);
+    if (!items.length) return;
+
+    var R = 0, avg = 0, cx = 0, cy = 0;
+    items.forEach(function(it){ R = Math.max(R, it.geo.size); avg += it.geo.size; cx += it.fx; cy += it.fy; });
+    avg /= items.length; cx /= items.length; cy /= items.length;
+    var gl = L.glow / 100;
+
+    /* 独立したループ（本体と溶け合わせない）は、融合フィールドを使わず
+       フル解像度のベクターで細くシャープに描く */
+    var vt = obj.kind === 'orbit' && !obj.orbit.fuse;
+    var pw = 0.3 * Math.exp(L.coreSize * 0.0146);
+    var solid = L.mode !== 'light' ? pal(L, Math.max(0.01, L.midPos / 100)) : null;
+    if (vt){
+      clearCtx(mctx);
+      mctx.strokeStyle = '#ffffff';
+      items.forEach(function(it){
+        if (it.uniform){
+          /* 太さが一定の線：1本のベジェ曲線を ctx.lineWidth で一気に引く */
+          mctx.lineCap = 'round'; mctx.lineJoin = 'round';
+          mctx.lineWidth = it.lineWidth;
+          mctx.strokeStyle = '#ffffff';
+          mctx.stroke(it.line);
+        } else {
+          mctx.fill(tubeOutline(it, 1));       /* 入り・抜きなど太さが変わる線は、連続した輪郭図形で */
+        }
+      });
+      resetCtx(mctx);
+      clearCtx(oictx);
+      oictx.fillStyle = '#ffffff';
+      oictx.fillRect(0, 0, S, S);
+      oictx.globalCompositeOperation = 'destination-out';
+      oictx.drawImage(mask, 0, 0);
+      resetCtx(oictx);
+    } else {
+    /*
+      本体の描き方（棘の先端を欠けさせないための構成）
+      ① 色：融合フィールドから「形に沿ったグラデーション」の色を作る。形の外側まで色を延ばしておく（切り抜かない）
+      ② 形：フル解像度のベクターで自分の図形を塗る ∪ 融合のつなぎ目（低解像度）
+      ③ 持ち分：オブジェクトどうしが重なる所だけ、なめらかに分け合う
+      → 色 を ②×③ の形で切り抜く。低解像度で細い棘の先が消えて線との間に隙間ができる問題が起きない
+    */
+    var acc = objAcc[oi];
+    var img = blctx.createImageData(W, W), d = img.data;
+    var wimg = wlctx.createImageData(W, W), wd = wimg.data;
+    var lut = colorLUT(L);
+    var sr = solid ? toSRGB(solid[0]) : 0, sg = solid ? toSRGB(solid[1]) : 0, sb = solid ? toSRGB(solid[2]) : 0;
+    for (var i = 0, j = 0; i < WW; i++, j += 4){
+      var tot = accBuf[i];
+      if (tot <= 0) continue;
+      var w = acc[i] / tot;
+      if (w < 0.002) continue;
+      if (solid){ d[j] = sr; d[j + 1] = sg; d[j + 2] = sb; }
+      else {
+        var u = Ubuf[i]; if (u > 1) u = 1; if (u < 0) u = 0;
+        var t = Math.pow(u, pw);
+        var k = (t * 255) | 0; if (k > 255) k = 255;
+        d[j] = lut[k * 3]; d[j + 1] = lut[k * 3 + 1]; d[j + 2] = lut[k * 3 + 2];
+      }
+      d[j + 3] = 255;
+      wd[j] = 255; wd[j + 1] = 255; wd[j + 2] = 255; wd[j + 3] = w * 255;
+    }
+    resetCtx(blctx); blctx.putImageData(img, 0, 0);
+    resetCtx(wlctx); wlctx.putImageData(wimg, 0, 0);
+
+    clearCtx(mctx);
+    fillVectorShapes(mctx, items);
+    resetCtx(mctx);
+    mctx.globalCompositeOperation = 'lighter';
+    mctx.imageSmoothingQuality = 'high';
+    mctx.drawImage(aLow, 0, 0, S, S);
+    mctx.globalCompositeOperation = 'destination-in';
+    mctx.drawImage(wLow, 0, 0, S, S);
+    resetCtx(mctx);
+    }
+
+    /* --- 輪郭線のみ --- */
+    if (L.mode === 'line'){
+      var lw = Math.max(1, L.lineWidth);
+      clearCtx(rgctx);
+      [lw, lw * 0.5].forEach(function(rr){
+        for (var q = 0; q < 16; q++){
+          var aa = q / 16 * Math.PI * 2;
+          rgctx.drawImage(mask, Math.cos(aa) * rr, Math.sin(aa) * rr);
+        }
+      });
+      rgctx.globalCompositeOperation = 'destination-out';
+      rgctx.drawImage(vt ? mask : gmask, 0, 0);
+      rgctx.globalCompositeOperation = 'source-in';
+      rgctx.fillStyle = rgba(solid, 1);
+      rgctx.fillRect(0, 0, S, S);
+      resetCtx(rgctx);
+      obdctx.drawImage(ring, 0, 0);
+      return;
+    }
+    /* --- シルエット --- */
+    if (L.mode === 'solid'){
+      if (vt){
+        obdctx.drawImage(mask, 0, 0);
+        obdctx.globalCompositeOperation = 'source-in';
+        obdctx.fillStyle = rgba(solid, 1);
+        obdctx.fillRect(0, 0, S, S);
+        resetCtx(obdctx);
+      } else {
+        obdctx.drawImage(mask, 0, 0);
+        obdctx.globalCompositeOperation = 'source-in';
+        obdctx.fillStyle = rgba(solid, 1);
+        obdctx.fillRect(0, 0, S, S);
+        resetCtx(obdctx);
+      }
+      return;
+    }
+
+    /* ---------- 背面の光（光の色で） ---------- */
+    var c = obctx;
+    buildTint(rgba(gpal(L, 0.75), 1));
+    c.globalCompositeOperation = 'lighter';
+    if (gl > 0){
+      var HL = 10;
+      for (var hi = 0; hi < HL; hi++){
+        var ht = hi / (HL - 1);
+        var hf = obj.kind === 'orbit' ? 1 : 1 + 2.4 * gl * Math.pow(ht, 1.3);
+        var ha = 0.16 * gl * Math.pow(1 - ht, 1.8) + 0.015 * gl;
+        c.save();
+        c.translate(cx, cy); c.scale(hf, hf); c.translate(-cx, -cy);
+        drawTintGlow(c, R * (0.1 + 0.9 * gl * ht) * hf * 0.6, rgba(gpal(L, 0.55 + 0.45 * ht), 1), ha * soft);
+        c.restore();
+      }
+      var mults  = [0.05, 0.12, 0.24, 0.45, 0.8, 1.35];
+      var alphas = [0.7, 0.52, 0.38, 0.27, 0.19, 0.12];
+      for (var m = 0; m < mults.length; m++){
+        drawTintGlow(c, R * gl * mults[m] * 1.6, rgba(gpal(L, 0.4 + 0.6 * m / (mults.length - 1)), 1), alphas[m] * soft);
+      }
+    }
+    var oI = L.outlineInt / 100, oS = L.outlineSpread / 100;
+    if (L.outlineOn && oI > 0){
+      var maxB = R * (0.04 + 5.5 * Math.pow(oS, 1.25));
+      var OL = 18;
+      var edge = L.edgeOn !== false;
+      var minB = edge ? 1.5 : 4 + R * 0.05;
+      var c0 = edge ? 0.12 : 0.5;
+      for (var li = 0; li < OL; li++){
+        var lt = li / (OL - 1);
+        /* 近い層ほど白く鋭く、遠い層ほど光の色で柔らかく（白線OFFなら白い芯を作らない） */
+        drawTintGlow(c, minB + maxB * Math.pow(lt, 1.9), rgba(gpal(L, c0 + (1 - c0) * lt), 1),
+                     oI * (0.62 * Math.pow(1 - lt, 1.15) + 0.05) / (OL * 0.2) * (edge ? 1 : 0.8) * soft);
+      }
+    }
+    resetCtx(c);
+
+    /* ---------- 本体 ---------- */
+    var b = obdctx;
+    if (vt){
+      /* 線の断面のグラデーション：太い（外側の色）→ 細い（中心の色）へ 32段。
+         中心線がコアの色、縁が外側の色になる */
+      /*
+        線の色：Aの色からBの色へ、線の長さに沿ってなめらかに移す（引き継ぎモード）。
+        断面の立体感：縁は外側の色、中心へ向かって少しだけ明るく（「立体感」で強さを調整）。
+        硬いネオン管にならないよう、中心でも外側の色から大きく離れない。
+      */
+      var relief = (obj.orbit.relief === undefined ? 35 : obj.orbit.relief) / 100;
+      var pwA = 0.3 * Math.exp(LA.coreSize * 0.0146);
+      var NT = 24;
+      items.forEach(function(it){
+        var pA0 = it.pts[0], pB0 = it.pts[it.pts.length - 1];
+        for (var kt = 0; kt < NT; kt++){
+          var ftb = 1 - kt / NT;
+          var tc = 1 - (1 - Math.pow(ftb, pwA)) * relief;
+          var ca = pal(LA, tc), cb2 = pal(LB, tc);
+          /* Aの色 → Bの色 を線の長さ方向に、断面は外側の色 → 中心で少し明るく */
+          var lgd = b.createLinearGradient(pA0[0], pA0[1], pB0[0], pB0[1]);
+          for (var gs = 0; gs <= 8; gs++){
+            var sm = gs / 8;
+            lgd.addColorStop(sm, rgba([ca[0] + (cb2[0] - ca[0]) * sm, ca[1] + (cb2[1] - ca[1]) * sm, ca[2] + (cb2[2] - ca[2]) * sm], 1));
+          }
+          b.fillStyle = lgd;
+          if (it.uniform){
+            /* 断面のグラデーション：同じ曲線を、太い順に ctx.lineWidth を細くしながら重ねて引く */
+            b.lineCap = 'round'; b.lineJoin = 'round';
+            b.lineWidth = Math.max(0.5, it.lineWidth * ftb);
+            b.strokeStyle = lgd;
+            b.stroke(it.line);
+          } else {
+            b.fill(tubeOutline(it, ftb));
+          }
+        }
+        /*
+          つや（リキッドのハイライト）：線の片側に寄せた細い帯を、中心の色を白に近づけた色で
+          何層かに分けて薄く重ねる。影や加算は使わない「色だけ」の表現なので、光OFFでも成り立つ。
+          ハイライトは左上から光が当たっている向きにそろえる（線の向きが変わっても帯が裏返らない）。
+        */
+        var gloss = (obj.orbit.gloss === undefined ? 55 : obj.orbit.gloss) / 100;
+        if (gloss > 0 && !it.uniform){
+          var P = it.pts, n = P.length, sx = 0, sy = 0;
+          for (var gi = 1; gi < n; gi++){ sx += P[gi][0] - P[gi - 1][0]; sy += P[gi][1] - P[gi - 1][1]; }
+          var sl = Math.hypot(sx, sy) || 1;
+          var nxm = -sy / sl, nym = sx / sl;
+          var side = (nxm * -0.707 + nym * -0.707) >= 0 ? 1 : -1;      /* 法線が左上を向く側に帯を置く */
+          var hiA = pal(LA, 0), hiB = pal(LB, 0);
+          var GL = 6;
+          for (var gk = 0; gk < GL; gk++){
+            var gf = 0.42 - gk * 0.055;                                   /* 帯の太さ：外側の柔らかい層 → 芯の細い層 */
+            var ga = gloss * 0.16;
+            var mixW = 0.35 + 0.1 * gk;                                   /* 芯ほど白に近い */
+            var hA = [hiA[0] + (1 - hiA[0]) * mixW, hiA[1] + (1 - hiA[1]) * mixW, hiA[2] + (1 - hiA[2]) * mixW];
+            var hB = [hiB[0] + (1 - hiB[0]) * mixW, hiB[1] + (1 - hiB[1]) * mixW, hiB[2] + (1 - hiB[2]) * mixW];
+            var hg = b.createLinearGradient(P[0][0], P[0][1], P[n - 1][0], P[n - 1][1]);
+            hg.addColorStop(0, rgba(hA, 0));
+            hg.addColorStop(0.18, rgba(hA, ga));
+            hg.addColorStop(0.5, rgba([(hA[0] + hB[0]) / 2, (hA[1] + hB[1]) / 2, (hA[2] + hB[2]) / 2], ga));
+            hg.addColorStop(0.82, rgba(hB, ga));
+            hg.addColorStop(1, rgba(hB, 0));
+            b.fillStyle = hg;
+            b.fill(tubeOutline(it, gf, 0.38 * side));
+          }
+        }
+      });
+      resetCtx(b);
+      b.globalCompositeOperation = 'destination-in';
+      b.drawImage(mask, 0, 0);
+      resetCtx(b);
+    } else {
+      b.imageSmoothingQuality = 'high';
+      b.drawImage(bodyLow, 0, 0, S, S);
+      b.globalCompositeOperation = 'destination-in';
+      b.drawImage(mask, 0, 0);
+      resetCtx(b);
+    }
+
+    if (L.outlineOn && oI > 0 && L.edgeOn !== false){
+      var rI = Math.min(1.6, oI);
+      clearCtx(rmctx);
+      rmctx.shadowBlur = R * (0.06 + 0.25 * oS);
+      rmctx.shadowColor = rgba(gpal(L, 0.5), 1);
+      rmctx.globalAlpha = Math.min(1, 0.55 * rI);
+      rmctx.drawImage(vt ? oinv : ginv, 0, 0);
+      rmctx.shadowBlur = Math.max(1, R * 0.012);
+      rmctx.shadowColor = rgba(gpal(L, 0.1), 1);
+      rmctx.globalAlpha = Math.min(1, 0.8 * rI);
+      rmctx.drawImage(vt ? oinv : ginv, 0, 0);
+      resetCtx(rmctx);
+      rmctx.globalCompositeOperation = 'destination-in';
+      rmctx.drawImage(mask, 0, 0);
+      resetCtx(rmctx);
+      b.globalCompositeOperation = 'lighter';
+      b.drawImage(rim, 0, 0);
+    }
+    b.globalCompositeOperation = 'lighter';
+    items.forEach(function(it){
+      if (it.kind === 'tube' || !L.coreOn) return;
+      var pr = Math.max(2, it.geo.size * 0.025);
+      var pg = b.createRadialGradient(it.fx, it.fy, 0, it.fx, it.fy, pr);
+      for (var k1 = 0; k1 <= 15; k1++){
+        var t1 = k1 / 15;
+        pg.addColorStop(t1, rgba(pal(L, t1 * 0.2), Math.pow(1 - t1, 2)));
+      }
+      b.fillStyle = pg;
+      b.beginPath(); b.arc(it.fx, it.fy, pr, 0, Math.PI * 2); b.fill();
+    });
+    resetCtx(b);
+
+    /* ---------- 前面の光（光の色で） ---------- */
+    var fc = ofctx;
+    if (L.coreOn && L.coreInt > 0){
+      var cI = L.coreInt / 100;
+      var maxF = 0.15 + 1.6 * L.coreSpread / 100;
+      var CL = items.length > 6 ? 10 : 24;
+      var boost = CL < 24 ? 1.6 : 1;
+      fc.globalCompositeOperation = 'lighter';
+      items.forEach(function(it){
+        if (it.kind === 'tube'){
+          /* ループ：中心線を細い芯から太い霞へ 16段重ねて、線そのものを発光させる */
+          var hAvg = 0; it.ws.forEach(function(w){ hAvg += w; }); hAvg /= it.ws.length;
+          fc.lineJoin = 'round';
+          for (var ti = 0; ti < 16; ti++){
+            var tt2 = ti / 15;
+            var tw = hAvg * 2 * (0.08 + maxF * 0.9 * Math.pow(tt2, 1.6));
+            var ta = cI * (0.45 * Math.exp(-tt2 * 4) + 0.05) * (1 - tt2 * 0.85) * soft;
+            var tcol = gpal(L, tt2 * 0.9);
+            fc.lineWidth = Math.max(0.6, tw);
+            fc.shadowBlur = Math.max(1, tw * 0.6);
+            fc.shadowColor = rgba(tcol, ta);
+            fc.strokeStyle = rgba(tcol, ta * 0.6);
+            fc.stroke(it.line);
+          }
+          return;
+        }
+        var Rp = it.geo.size;
+        for (var ci = 0; ci < CL; ci++){
+          var ct = ci / (CL - 1);
+          var cf = 0.02 + maxF * Math.pow(ct, 1.6);
+          var ca = cI * (0.5 * Math.exp(-ct * 4.5) + 0.06) * (1 - ct * 0.85) * boost;
+          var ccol = gpal(L, ct * 0.9);
+          fc.shadowBlur = Math.max(1, Rp * cf * 0.3);
+          fc.shadowColor = rgba(ccol, ca);
+          fc.fillStyle = rgba(ccol, ca * 0.5);
+          fillScaled(fc, it.path, it.fx, it.fy, cf);
+        }
+      });
+      resetCtx(fc);
+    }
+
+    items.forEach(function(it){
+      if (!it.g || !L.spikeOn) return;
+      var g = it.g, s = g.s, Rp = it.geo.size;
+      if (s <= 0) return;
+      var fx = it.fx, fy = it.fy;
+      fc.save();
+      fc.globalCompositeOperation = 'lighter';
+      fc.lineCap = 'butt';
+      g.verts.forEach(function(p){
+        if (!p.tip) return;
+        var dist = Math.hypot(p.x - fx, p.y - fy);
+        if (dist < Rp * 0.55) return;
+        var dx = (p.x - fx) / dist, dy = (p.y - fy) / dist;
+        /* 芯線：曲げに合わせてカーブさせる */
+        var qx = fx + dx * dist * 0.55 + (p.bend ? p.bend[0] * 0.5 : 0);
+        var qy = fy + dy * dist * 0.55 + (p.bend ? p.bend[1] * 0.5 : 0);
+        var lg = fc.createLinearGradient(fx, fy, p.x, p.y);
+        for (var k5 = 0; k5 <= 15; k5++){
+          var t5 = k5 / 15;
+          lg.addColorStop(t5, rgba(gpal(L, t5 * 0.8), s * 0.55 * Math.exp(-2.2 * t5) * (1 - t5 * 0.7)));
+        }
+        fc.strokeStyle = lg;
+        fc.lineWidth = Math.max(1, Rp * 0.014);
+        fc.beginPath(); fc.moveTo(fx, fy); fc.quadraticCurveTo(qx, qy, p.x, p.y); fc.stroke();
+
+        /* 針状の光：先端の向き（曲げを反映）に沿って外へ */
+        var tdx = p.x - qx, tdy = p.y - qy, tl = Math.hypot(tdx, tdy) || 1;
+        tdx /= tl; tdy /= tl;
+        var nl = Rp * (0.12 + 0.55 * gl) * s;
+        var nw = Math.max(0.8, Rp * 0.02);
+        if (nl > 2){
+          var nx = -tdy, ny = tdx;
+          var tipx = p.x + tdx * nl, tipy = p.y + tdy * nl;
+          var sx = p.x - tdx * nl * 0.25, sy = p.y - tdy * nl * 0.25;
+          var ng = fc.createLinearGradient(sx, sy, tipx, tipy);
+          for (var k4 = 0; k4 <= 15; k4++){
+            var t4 = k4 / 15;
+            ng.addColorStop(t4, rgba(gpal(L, 0.05 + t4 * 0.8), 0.85 * s * Math.pow(1 - t4, 1.6)));
+          }
+          fc.fillStyle = ng;
+          fc.beginPath();
+          fc.moveTo(sx, sy);
+          fc.quadraticCurveTo(p.x + nx * nw * 0.2, p.y + ny * nw * 0.2, p.x + nx * nw, p.y + ny * nw);
+          fc.quadraticCurveTo(p.x + tdx * nl * 0.1 + nx * nw * 0.1, p.y + tdy * nl * 0.1 + ny * nw * 0.1, tipx, tipy);
+          fc.quadraticCurveTo(p.x + tdx * nl * 0.1 - nx * nw * 0.1, p.y + tdy * nl * 0.1 - ny * nw * 0.1, p.x - nx * nw, p.y - ny * nw);
+          fc.quadraticCurveTo(p.x - nx * nw * 0.2, p.y - ny * nw * 0.2, sx, sy);
+          fc.closePath();
+          fc.fill();
+        }
+      });
+      fc.restore();
+    });
+
+    if (L.crossOn && L.crossInt > 0 && L.crossLen > 0){
+      if (L.crossAt === 'center') drawCross(fc, L, cx, cy, items.length > 1 ? R * 1.6 : R);
+      else items.forEach(function(it){ if (it.kind !== 'tube') drawCross(fc, L, it.fx, it.fy, it.geo.size); });
+    }
+    resetCtx(fc);
+  }
+
+  /* =========================================================
+     シーン全体の合成（レイヤーを完全に分離）
+     レイヤー1：図形本体とメタボール融合
+        融合フィールド（白い形 → ぼかし → しきい値）→ 各オブジェクトの持ち分を塗る
+        持ち分どうしは足すと全体になるので、この層の中だけ加算で重ねる
+     レイヤー2：接続線（頂点から頂点へ）
+        レイヤー1がすべて描き終わった「後」に、通常の重ね（source-over）で上に描く。
+        融合の計算には一切入らないので、レイヤー1を透明にしたり邪魔したりしない
+     → 背面の光[波形] → 本体 → 前面の光[波形] → グリッチ → 色収差 → ピクセル化 → ノイズ
+     ========================================================= */
+  var lines = mk(), lnctx = lines.getContext('2d');
+  function isLineLayer(obj){ return obj.kind === 'orbit' && !obj.orbit.fuse; }
+
+  function renderScene(){
+    var all = objects.map(function(obj){ return { obj:obj, items: buildItems(obj) }; });
+    computeSceneField(all);
+    buildGroupMask(all);
+    clearCtx(bkctx); clearCtx(bdctx); clearCtx(frctx); clearCtx(lnctx);
+
+    /* --- レイヤー1：図形本体とメタボール --- */
+    all.forEach(function(entry, oi){
+      if (isLineLayer(entry.obj)) return;
+      renderObject(entry.obj, oi, entry.items);
+      var a = entry.obj.light.opacity / 100;
+      bkctx.globalAlpha = a; bkctx.globalCompositeOperation = 'lighter';
+      bkctx.drawImage(oBack, 0, 0);
+      bdctx.globalAlpha = a; bdctx.globalCompositeOperation = 'lighter';
+      bdctx.drawImage(oBody, 0, 0);
+      frctx.globalAlpha = a; frctx.globalCompositeOperation = 'lighter';
+      frctx.drawImage(oFront, 0, 0);
+    });
+
+    /* --- レイヤー2：接続線（レイヤー1の後に、独立して） --- */
+    all.forEach(function(entry, oi){
+      if (!isLineLayer(entry.obj)) return;
+      renderObject(entry.obj, oi, entry.items);
+      var a = entry.obj.light.opacity / 100;
+      bkctx.globalAlpha = a; bkctx.globalCompositeOperation = 'lighter';
+      bkctx.drawImage(oBack, 0, 0);
+      lnctx.globalAlpha = a; lnctx.globalCompositeOperation = 'source-over';
+      lnctx.drawImage(oBody, 0, 0);
+      frctx.globalAlpha = a; frctx.globalCompositeOperation = 'lighter';
+      frctx.drawImage(oFront, 0, 0);
+    });
+    resetCtx(bkctx); resetCtx(bdctx); resetCtx(frctx); resetCtx(lnctx);
+
+    if (G.waveOn){ applyWave(bkctx); applyWave(frctx); }
+
+    clearCtx(octx);
+    octx.drawImage(back, 0, 0);
+    octx.drawImage(lines, 0, 0);     /* 2. 接続線（背面） */
+    octx.drawImage(body, 0, 0);      /* 3. 星（オブジェクト）本体＋メタボール融合（最前面の図形） */
+    octx.globalCompositeOperation = 'lighter';
+    octx.drawImage(front, 0, 0);
+    resetCtx(octx);
+
+    if (G.glitchOn) fxGlitch(octx);
+    if (G.chromaOn) fxChroma(octx);
+    if (G.pixelOn)  fxPixel(octx);
+    if (G.noiseOn)  fxNoise(octx);
+  }
+
+  /* =========================================================
+     Y2K エフェクト
+     ========================================================= */
+  var waveMap = null, waveKey = '';
+  function getWaveMap(){
+    var key = G.waveMode + '|' + G.waveAmt + '|' + G.waveFine;
+    if (key === waveKey && waveMap) return waveMap;
+    waveKey = key;
+    if (!waveMap) waveMap = new Int32Array(NN);
+    var amp = G.waveAmt / 100 * 40;
+    var lambda = 260 - 2.2 * G.waveFine;
+    var TWO = Math.PI * 2;
+    for (var y = 0; y < S; y++){
+      for (var x = 0; x < S; x++){
+        var sx, sy;
+        if (G.waveMode === 'ripple'){
+          var dx = x - C, dy = y - C, r = Math.hypot(dx, dy);
+          if (r < 0.5){ sx = x; sy = y; }
+          else {
+            var rr = r + amp * Math.sin(TWO * r / lambda);
+            sx = C + dx / r * rr; sy = C + dy / r * rr;
+          }
+        } else {
+          sx = x + amp * Math.sin(TWO * y / lambda);
+          sy = y + amp * 0.35 * Math.sin(TWO * x / (lambda * 1.3));
+        }
+        sx = Math.round(sx); sy = Math.round(sy);
+        waveMap[y * S + x] = (sx >= 0 && sx < S && sy >= 0 && sy < S) ? (sy * S + sx) : -1;
+      }
+    }
+    return waveMap;
+  }
+  function applyWave(c){
+    if (G.waveAmt <= 0) return;
+    var map = getWaveMap();
+    var src = c.getImageData(0, 0, S, S).data;
+    var out = c.createImageData(S, S), o = out.data;
+    for (var p = 0, i = 0; p < NN; p++, i += 4){
+      var sp = map[p];
+      if (sp < 0) continue;
+      var si = sp * 4;
+      o[i] = src[si]; o[i + 1] = src[si + 1]; o[i + 2] = src[si + 2]; o[i + 3] = src[si + 3];
+    }
+    c.putImageData(out, 0, 0);
+  }
+
+  function mulberry32(a){
+    return function(){
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function fxGlitch(c){
+    var amt = G.glitchAmt / 100;
+    if (amt <= 0) return;
+    clearCtx(tctx);
+    tctx.drawImage(off, 0, 0);
+    var rnd = mulberry32(G.glitchSeed);
+    var bands = Math.round(3 + amt * 16);
+    for (var b = 0; b < bands; b++){
+      var y = Math.floor(rnd() * S);
+      var h = Math.floor(3 + rnd() * (6 + amt * 60));
+      var shift = Math.round((rnd() - 0.5) * amt * 240);
+      c.clearRect(0, y, S, h);
+      c.drawImage(tmp, 0, y, S, h, shift, y, S, h);
+      if (rnd() < 0.35){
+        c.save();
+        c.globalCompositeOperation = 'source-atop';
+        c.fillStyle = rnd() < 0.5 ? 'rgba(0,255,255,' + (0.35 * amt) + ')' : 'rgba(255,0,200,' + (0.35 * amt) + ')';
+        c.fillRect(0, y, S, Math.max(1, h * 0.3));
+        c.restore();
+      }
+    }
+    var blocks = Math.round(amt * 10);
+    for (var q = 0; q < blocks; q++){
+      var bw = Math.floor(20 + rnd() * 160 * amt), bh = Math.floor(6 + rnd() * 40 * amt);
+      var bxp = Math.floor(rnd() * (S - bw)), byp = Math.floor(rnd() * (S - bh));
+      var dxp = Math.round((rnd() - 0.5) * 120 * amt), dyp = Math.round((rnd() - 0.5) * 30 * amt);
+      c.drawImage(tmp, bxp, byp, bw, bh, bxp + dxp, byp + dyp, bw, bh);
+    }
+  }
+
+  function fxChroma(c){
+    var amt = G.chromaAmt / 100;
+    if (amt <= 0) return;
+    var k = amt * 0.045, sh = Math.round(amt * 10);
+    var src = c.getImageData(0, 0, S, S).data;
+    var out = c.createImageData(S, S), o = out.data;
+    var kr = 1 / (1 + k), kb = 1 / (1 - k);
+    for (var y = 0; y < S; y++){
+      var dy = y - C;
+      var ry = Math.round(C + dy * kr), by = Math.round(C + dy * kb);
+      for (var x = 0; x < S; x++){
+        var dx = x - C, i = (y * S + x) * 4;
+        var rx = Math.round(C + dx * kr) + sh, bx = Math.round(C + dx * kb) - sh;
+        var aR = 0, aB = 0, iR = -1, iB = -1;
+        if (rx >= 0 && rx < S && ry >= 0 && ry < S){ iR = (ry * S + rx) * 4; aR = src[iR + 3]; }
+        if (bx >= 0 && bx < S && by >= 0 && by < S){ iB = (by * S + bx) * 4; aB = src[iB + 3]; }
+        var aG = src[i + 3];
+        var a = aR > aG ? aR : aG; if (aB > a) a = aB;
+        if (a === 0){ o[i + 3] = 0; continue; }
+        o[i]     = iR >= 0 ? src[iR] * aR / a : 0;
+        o[i + 1] = src[i + 1] * aG / a;
+        o[i + 2] = iB >= 0 ? src[iB + 2] * aB / a : 0;
+        o[i + 3] = a;
+      }
+    }
+    c.putImageData(out, 0, 0);
+  }
+
+  function fxPixel(c){
+    var block = 2 + Math.round(G.pixelAmt / 100 * 46);
+    var sw = Math.max(1, Math.ceil(S / block));
+    small.width = sw; small.height = sw;
+    sctx.imageSmoothingEnabled = true;
+    sctx.imageSmoothingQuality = 'high';
+    sctx.clearRect(0, 0, sw, sw);
+    sctx.drawImage(off, 0, 0, sw, sw);
+    c.clearRect(0, 0, S, S);
+    c.imageSmoothingEnabled = false;
+    c.drawImage(small, 0, 0, sw, sw, 0, 0, S, S);
+    c.imageSmoothingEnabled = true;
+  }
+
+  var noiseBuf = null;
+  function fxNoise(c){
+    var amt = G.noiseAmt / 100;
+    if (amt <= 0) return;
+    if (!noiseBuf){
+      noiseBuf = new Float32Array(NN);
+      for (var j = 0; j < NN; j++) noiseBuf[j] = Math.random() + Math.random() - 1;
+    }
+    var img = c.getImageData(0, 0, S, S), d = img.data;
+    for (var p = 0, i = 0; p < NN; p++, i += 4){
+      var a = d[i + 3];
+      if (a === 0) continue;
+      var n = noiseBuf[p] * amt * 110;
+      var m = noiseBuf[(p * 7 + 13) % NN] * amt * 35;
+      d[i]     = d[i] + n + m;
+      d[i + 1] = d[i + 1] + n;
+      d[i + 2] = d[i + 2] + n - m;
+      d[i + 3] = a + noiseBuf[p] * amt * 60 * (a / 255);
+    }
+    c.putImageData(img, 0, 0);
+  }
+
+  /* =========================================================
+     ハンドル：頂点（赤）・棘の曲げ（水色）・回転（白）・移動（赤い四角）・チェーン（青）
+     ========================================================= */
+  function activeItem(obj){
+    var inst = instances(obj);
+    var i = Math.min(obj.activeInst || 0, inst.length - 1);
+    return inst[Math.max(0, i)];
+  }
+  function bendHandlePos(geo, g, v, i){
+    var ub = geo.bends[i] || { x:0, y:0 };
+    var hx = v.tx + v.dU[0] * 0.3 + ub.x, hy = v.ty + v.dU[1] * 0.3 + ub.y;
+    var r = rot(hx, hy, g.gr);
+    return [geo.x + r[0] * geo.size, geo.y + r[1] * geo.size];
+  }
+  function rotHandlePos(geo, g, sc){
+    var dir = rot(0, -1, g.gr);
+    var dist = geo.size * 1.25 + 24 * sc;
+    return [g.fx + dir[0] * dist, g.fy + dir[1] * dist];
+  }
+  function lineWidthHandle(obj, sc){
+    var it = orbitItems(obj)[0];
+    if (!it) return null;
+    var P = it.pts, n = P.length, m = Math.floor(n / 2);
+    var a = P[m - 1], b = P[m + 1];
+    var tx = b[0] - a[0], ty = b[1] - a[1], tl = Math.hypot(tx, ty) || 1;
+    var nx = -ty / tl, ny = tx / tl;
+    var LW = obj.orbit.lineWidth !== undefined ? obj.orbit.lineWidth : 12;
+    var ratio = (it.ws[m] * 2) / Math.max(0.01, LW);     /* 真ん中の実際の幅 ÷ 線の太さの設定値 */
+    var off = it.ws[m] + 18 * sc;
+    return { cx:P[m][0], cy:P[m][1], nx:nx, ny:ny, hx:P[m][0] + nx * off, hy:P[m][1] + ny * off, ratio:ratio };
+  }
+  function handleList(obj){
+    var sc = uiScale();
+    var hl = [];
+    if (obj.kind === 'orbit'){
+      var ends = orbitEnds(obj.orbit);
+      hl.push({ type:'oend', x:ends[0][0], y:ends[0][1], k:0 });
+      hl.push({ type:'oend', x:ends[1][0], y:ends[1][1], k:1 });
+      /* 太さのハンドル：線の真ん中のすぐ横。外へ引くと太く、内へ寄せると細くなる */
+      var lwInfo = lineWidthHandle(obj, sc);
+      if (lwInfo) hl.push({ type:'lw', x:lwInfo.hx, y:lwInfo.hy, ax:lwInfo.cx, ay:lwInfo.cy });
+      if (obj.orbit._cp){
+        hl.push({ type:'cp', x:obj.orbit._cp[0][0], y:obj.orbit._cp[0][1], k:0 });
+        hl.push({ type:'cp', x:obj.orbit._cp[1][0], y:obj.orbit._cp[1][1], k:1 });
+      }
+      return hl;
+    }
+    var it = activeItem(obj);
+    var geo = it.geo, g = geometry(geo);
+    g.verts.forEach(function(v, i){
+      hl.push({ type:'vert', x:v.x, y:v.y, idx:i, tip:v.tip });
+      if (v.tip){
+        var bp = bendHandlePos(geo, g, v, i);
+        hl.push({ type:'bend', x:bp[0], y:bp[1], idx:i, ax:v.x, ay:v.y });
+      }
+    });
+    var rp = rotHandlePos(geo, g, sc);
+    hl.push({ type:'rot', x:rp[0], y:rp[1], ax:g.fx, ay:g.fy });
+    var t = obj.geo;
+    hl.push({ type:'move', x:t.x, y:t.y });
+    if (obj.layout.mode === 'chain'){
+      obj.layout.chPts.forEach(function(p, k){ hl.push({ type:'chain', x:t.x + p[0], y:t.y + p[1], k:k }); });
+    }
+    return hl;
+  }
+
+  /* =========================================================
+     画面描画
+     ========================================================= */
+  var drag = null;
+  var currentPane = 'pShape';
+  function uiScale(){ return S / (cv.getBoundingClientRect().width || S); }
+
+  /* 棘の先に A1, A2… の番号を描く。chosen は選ばれている番号（1始まり、0なら自動で決まった先端 autoPt を強調） */
+  function drawTipLabels(o, prefix, chosen, autoPt, color){
+    if (!o) return;
+    var tips = tipList(o), sc = uiScale();
+    ctx.save();
+    ctx.font = '600 ' + Math.round(11 * sc) + 'px "Helvetica Neue",Helvetica,Arial,sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    tips.forEach(function(t, i){
+      var isSel = chosen > 0 ? (i + 1 === chosen)
+                             : (autoPt && Math.abs(autoPt[0] - t[0]) < 0.5 && Math.abs(autoPt[1] - t[1]) < 0.5);
+      var lx = t[0] + t[2] * 20 * sc, ly = t[1] + t[3] * 20 * sc;
+      var label = prefix + (i + 1);
+      var w = ctx.measureText(label).width + 8 * sc, h = 15 * sc;
+      ctx.fillStyle = isSel ? color : 'rgba(0,0,0,.72)';
+      ctx.fillRect(lx - w / 2, ly - h / 2, w, h);
+      ctx.lineWidth = 1 * sc;
+      ctx.strokeStyle = color;
+      ctx.strokeRect(lx - w / 2, ly - h / 2, w, h);
+      ctx.fillStyle = isSel ? '#000000' : color;
+      ctx.fillText(label, lx, ly + 0.5 * sc);
+      ctx.beginPath(); ctx.arc(t[0], t[1], (isSel ? 4 : 2.5) * sc, 0, Math.PI * 2);
+      ctx.fillStyle = color; ctx.fill();
+    });
+    ctx.restore();
+  }
+
+  function draw(){
+    renderScene();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = G.dark ? '#000000' : '#ffffff';
+    ctx.fillRect(0, 0, S, S);
+    ctx.drawImage(off, 0, 0);
+
+    if (G.handles && objects.length){
+      var obj = curObj(), sc = uiScale();
+      var it = activeItem(obj);
+      var hl = handleList(obj);
+      ctx.save();
+      if (obj.layout.mode !== 'free'){
+        ctx.setLineDash([3 * sc, 5 * sc]);
+        ctx.lineWidth = 1.2 * sc;
+        ctx.strokeStyle = 'rgba(255,255,255,.45)';
+        ctx.beginPath(); ctx.arc(it.geo.x, it.geo.y, it.geo.size * 1.1, 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      if (obj.layout.mode === 'chain'){
+        var t = obj.geo, P = obj.layout.chPts;
+        ctx.setLineDash([4 * sc, 4 * sc]);
+        ctx.lineWidth = 1.2 * sc;
+        ctx.strokeStyle = 'rgba(61,139,255,.7)';
+        ctx.beginPath();
+        ctx.moveTo(t.x + P[0][0], t.y + P[0][1]);
+        for (var k = 1; k < 4; k++) ctx.lineTo(t.x + P[k][0], t.y + P[k][1]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      hl.forEach(function(h){
+        var isDrag = drag && drag.h && drag.h.type === h.type && drag.h.idx === h.idx && drag.h.k === h.k;
+        if (h.type === 'vert'){
+          ctx.beginPath();
+          ctx.arc(h.x, h.y, (h.tip ? 6 : 4.5) * sc, 0, Math.PI * 2);
+          ctx.fillStyle = isDrag ? '#ff2d16' : '#ffffff';
+          ctx.fill();
+          ctx.lineWidth = 2 * sc;
+          ctx.strokeStyle = '#ff2d16';
+          ctx.stroke();
+        } else if (h.type === 'bend'){
+          ctx.lineWidth = 1.2 * sc;
+          ctx.strokeStyle = 'rgba(62,230,255,.75)';
+          ctx.beginPath(); ctx.moveTo(h.ax, h.ay); ctx.lineTo(h.x, h.y); ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(h.x, h.y, 5.5 * sc, 0, Math.PI * 2);
+          ctx.fillStyle = isDrag ? '#ffffff' : '#3ee6ff';
+          ctx.fill();
+        } else if (h.type === 'rot'){
+          ctx.lineWidth = 1 * sc;
+          ctx.strokeStyle = 'rgba(255,255,255,.5)';
+          ctx.beginPath(); ctx.moveTo(h.ax, h.ay); ctx.lineTo(h.x, h.y); ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(h.x, h.y, 8 * sc, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff'; ctx.fill();
+          ctx.lineWidth = 2 * sc; ctx.strokeStyle = '#000000'; ctx.stroke();
+        } else if (h.type === 'move'){
+          var cs = 10 * sc;
+          ctx.fillStyle = '#ff2d16';
+          ctx.fillRect(h.x - cs / 2, h.y - cs / 2, cs, cs);
+        } else if (h.type === 'lw'){
+          ctx.setLineDash([3 * sc, 3 * sc]);
+          ctx.lineWidth = 1 * sc;
+          ctx.strokeStyle = 'rgba(62,230,255,.8)';
+          ctx.beginPath(); ctx.moveTo(h.ax, h.ay); ctx.lineTo(h.x, h.y); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.beginPath(); ctx.arc(h.x, h.y, 9 * sc, 0, Math.PI * 2);
+          ctx.fillStyle = isDrag ? '#ffffff' : '#3ee6ff'; ctx.fill();
+          ctx.fillStyle = '#000000';
+          ctx.font = '700 ' + Math.round(11 * sc) + 'px "Helvetica Neue",Helvetica,Arial,sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('↕', h.x, h.y + 0.5 * sc);
+        } else if (h.type === 'oend'){
+          ctx.beginPath();
+          ctx.arc(h.x, h.y, 9 * sc, 0, Math.PI * 2);
+          ctx.lineWidth = 2 * sc;
+          ctx.strokeStyle = isDrag ? '#ffffff' : '#3ee6ff';
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(h.x, h.y, 3 * sc, 0, Math.PI * 2);
+          ctx.fillStyle = '#3ee6ff';
+          ctx.fill();
+        } else if (h.type === 'chain'){
+          var r = 8 * sc;
+          ctx.beginPath();
+          ctx.moveTo(h.x, h.y - r); ctx.lineTo(h.x + r, h.y); ctx.lineTo(h.x, h.y + r); ctx.lineTo(h.x - r, h.y); ctx.closePath();
+          ctx.fillStyle = isDrag ? '#ffffff' : '#3d8bff';
+          ctx.fill();
+        }
+      });
+      ctx.restore();
+
+      /* 接続線の方向線（制御点）：Illustratorのように、端点から制御点へ細い線と四角を表示 */
+      if (obj.kind === 'orbit' && obj.orbit._cp){
+        var cpv = obj.orbit._cp;
+        ctx.save();
+        ctx.lineWidth = 1.2 * sc;
+        ctx.strokeStyle = 'rgba(255,255,255,.7)';
+        ctx.setLineDash([]);
+        [[cpv[2], cpv[0]], [cpv[3], cpv[1]]].forEach(function(pr){
+          ctx.beginPath(); ctx.moveTo(pr[0][0], pr[0][1]); ctx.lineTo(pr[1][0], pr[1][1]); ctx.stroke();
+          var r6 = 6 * sc;
+          var dragging = drag && drag.type === 'cp' && obj.orbit._cp[drag.h.k] === pr[1];
+          ctx.fillStyle = dragging ? '#ff2d16' : '#ffffff';
+          ctx.fillRect(pr[1][0] - r6, pr[1][1] - r6, r6 * 2, r6 * 2);
+          ctx.strokeStyle = '#000000';
+          ctx.strokeRect(pr[1][0] - r6, pr[1][1] - r6, r6 * 2, r6 * 2);
+          ctx.strokeStyle = 'rgba(255,255,255,.7)';
+        });
+        ctx.restore();
+      }
+
+      /* 棘の番号：ループを選んでいるとき、または融合タブでループを作ろうとしているとき */
+      if (obj.kind === 'orbit'){
+        var O = obj.orbit;
+        drawTipLabels(findObj(O.a), 'A', O.va || 0, O.pA, '#3ee6ff');
+        drawTipLabels(findObj(O.b), 'B', O.vb || 0, O.pB, '#ffd84a');
+      } else if (currentPane === 'pFuse'){
+        var oa = findObj(+$('orbA').value), ob = findObj(+$('orbB').value);
+        if (oa && ob && oa !== ob){
+          drawTipLabels(oa, 'A', +$('orbAv').value || 0, null, '#3ee6ff');
+          drawTipLabels(ob, 'B', +$('orbBv').value || 0, null, '#ffd84a');
+        }
+      }
+    }
+  }
+  var pending = false;
+  function request(){
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(function(){ pending = false; draw(); });
+  }
+
+  /* =========================================================
+     キャンバス操作
+     ========================================================= */
+  function pos(e){
+    var r = cv.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * S / r.width, y: (e.clientY - r.top) * S / r.height };
+  }
+  var PRIORITY = { lw:0, cp:0, oend:0, bend:0, rot:1, chain:2, vert:3, move:4 };
+  function hitHandle(p){
+    if (!G.handles || !objects.length) return null;
+    var best = null, bestD = 22 * uiScale(), bestP = 9;
+    handleList(curObj()).forEach(function(h){
+      var d = Math.hypot(h.x - p.x, h.y - p.y);
+      var pr = PRIORITY[h.type];
+      if (d < bestD + 4 * uiScale() && (d < bestD - 6 * uiScale() || pr < bestP || best === null) && d < 22 * uiScale()){
+        bestD = d; best = h; bestP = pr;
+      }
+    });
+    return best;
+  }
+  function hitObject(p){
+    /* 1. 図形そのもの（上にあるものから順に） */
+    for (var i = objects.length - 1; i >= 0; i--){
+      var items = buildItems(objects[i]);
+      for (var k = items.length - 1; k >= 0; k--){
+        var it = items[k];
+        if (it.kind === 'tube'){
+          hitCtx.lineWidth = it.maxW * 2 + 18 * uiScale();
+          hitCtx.lineJoin = 'round';
+          if (hitCtx.isPointInStroke(it.line, p.x, p.y)) return { o:i, inst:0 };
+        } else if (hitCtx.isPointInPath(it.path, p.x, p.y)){
+          return { o:i, inst:it.idx };
+        }
+      }
+    }
+    /* 2. 溶け合ったつなぎ目：その場所を一番多く占めているオブジェクトを選ぶ */
+    var lx = Math.floor(p.x * KW), ly = Math.floor(p.y * KW);
+    if (lx < 0 || ly < 0 || lx >= W || ly >= W) return null;
+    var idx = ly * W + lx;
+    if (!(Abuf[idx] > 0.3)) return null;
+    var best = -1, bestV = 0;
+    for (var o = 0; o < objects.length && o < objAcc.length; o++){
+      if (objAcc[o][idx] > bestV){ bestV = objAcc[o][idx]; best = o; }
+    }
+    if (best < 0) return null;
+    var its = buildItems(objects[best]), bi = 0, bd = 1e9;
+    its.forEach(function(it2){
+      var dd = Math.hypot(it2.fx - p.x, it2.fy - p.y);
+      if (dd < bd){ bd = dd; bi = it2.idx; }
+    });
+    return { o:best, inst:bi };
+  }
+  function normDeg(d){ d = ((d + 180) % 360 + 360) % 360 - 180; return Math.round(d); }
+
+  cv.addEventListener('pointerdown', function(e){
+    var p = pos(e);
+    var hh = hitHandle(p);
+    if (hh){
+      e.preventDefault();
+      drag = { h:hh, last:p, type:hh.type };
+      try { cv.setPointerCapture(e.pointerId); } catch(err) {}
+      request();
+      return;
+    }
+    var hit = hitObject(p);
+    if (hit){
+      e.preventDefault();
+      var changed = hit.o !== sel || objects[hit.o].activeInst !== hit.inst;
+      sel = hit.o;
+      objects[sel].activeInst = hit.inst;
+      if (changed) syncUI();
+      drag = { h:null, last:p, type:'move' };
+      try { cv.setPointerCapture(e.pointerId); } catch(err) {}
+      request();
+    }
+  });
+  cv.addEventListener('pointermove', function(e){
+    var p = pos(e);
+    if (!drag){
+      cv.style.cursor = (hitHandle(p) || hitObject(p)) ? 'grab' : 'default';
+      return;
+    }
+    e.preventDefault();
+    cv.style.cursor = 'grabbing';
+    var obj = curObj();
+    var dx = p.x - drag.last.x, dy = p.y - drag.last.y;
+    var it = activeItem(obj), geo = it.geo, g;
+    if (drag.type === 'vert'){
+      g = geometry(geo);
+      var v = g.verts[drag.h.idx];
+      var o = rot((p.x - geo.x) / geo.size, (p.y - geo.y) / geo.size, -g.gr);
+      obj.geo.offsets[drag.h.idx] = { x: o[0] - v.preX, y: o[1] - v.preY };
+    } else if (drag.type === 'bend'){
+      g = geometry(geo);
+      var vb = g.verts[drag.h.idx];
+      var ou = rot((p.x - geo.x) / geo.size, (p.y - geo.y) / geo.size, -g.gr);
+      var bx = ou[0] - (vb.tx + vb.dU[0] * 0.3), by = ou[1] - (vb.ty + vb.dU[1] * 0.3);
+      var bl = Math.hypot(bx, by);
+      if (bl > 1.6){ bx *= 1.6 / bl; by *= 1.6 / bl; }
+      obj.geo.bends[drag.h.idx] = { x: bx, y: by };
+    } else if (drag.type === 'rot'){
+      g = geometry(geo);
+      var ang = Math.atan2(p.y - g.fy, p.x - g.fx) * 180 / Math.PI + 90;
+      if (obj.layout.mode === 'free'){
+        obj.geo.rot = normDeg(ang);
+      } else {
+        var arr = instRotArr(obj);
+        var cur = arr[it.idx] || 0;
+        arr[it.idx] = normDeg(ang - (geo.rot - cur));
+      }
+      syncSliders();
+    } else if (drag.type === 'lw'){
+      /* 太さのハンドル：線の真ん中からの距離 → 線の太さ（スライダーと連動） */
+      var info = lineWidthHandle(obj, uiScale());
+      if (info){
+        var dist = Math.abs((p.x - info.cx) * info.nx + (p.y - info.cy) * info.ny) - 18 * uiScale();
+        var nw = Math.max(1, Math.min(50, (dist * 2) / Math.max(0.05, info.ratio)));
+        obj.orbit.lineWidth = Math.round(nw);
+        syncSliders();
+      }
+    } else if (drag.type === 'cp'){
+      /*
+        白い四角（制御点）のドラッグ → スライダーの値へ逆算（双方向の連動）
+        制御点 = 端点 + 線の向き t × ハンドルの長さ + 垂直方向 n × ずらし量
+        ドラッグ位置からこの2つの成分を解いて、
+          ハンドルの長さ → 「ハンドルの長さ A側/B側」スライダー
+          両方のずらし量 o1, o2 → 「膨らみ」と「方向」に変換
+            膨らみ = √((o1² + o2²) / 2)、方向 φ = atan2((o1 − o2)/2, (o1 + o2)/2)
+        （順方向の式 o1 = 膨らみ·√2·cos(φ−45°), o2 = 膨らみ·√2·cos(φ+45°) のちょうど逆）
+      */
+      var Ob = obj.orbit, B0 = Ob._basis;
+      if (B0 && Ob.tangent !== false){
+        /* 棘に沿うモード：四角は棘の向きの線上だけを動く（接続のなめらかさを保ったまま長さを変える） */
+        var baseT = drag.h.k === 0 ? B0.pa : B0.pb, tvT = drag.h.k === 0 ? B0.t1 : B0.t2;
+        var proj = Math.max(0, (p.x - baseT[0]) * tvT[0] + (p.y - baseT[1]) * tvT[1]);
+        var bigT = 1 + (Ob.bulge === undefined ? 30 : Ob.bulge) / 100;
+        var armT = Math.max(0, Math.min(150, proj / B0.d / bigT * 100));
+        if (drag.h.k === 0) Ob.arm1 = armT; else Ob.arm2 = armT;
+        syncSliders();
+      } else if (B0){
+        var base = drag.h.k === 0 ? B0.pa : B0.pb, tv = drag.h.k === 0 ? B0.t1 : B0.t2, nv = B0.n;
+        var vx = p.x - base[0], vy = p.y - base[1];
+        var det = tv[0] * nv[1] - tv[1] * nv[0];
+        var ca, cb;
+        if (Math.abs(det) < 0.05){ ca = 0; cb = vx * nv[0] + vy * nv[1]; }
+        else {
+          ca = (vx * nv[1] - vy * nv[0]) / det;
+          cb = (tv[0] * vy - tv[1] * vx) / det;
+        }
+        var armPct = Math.max(0, Math.min(150, ca / B0.d * 100));
+        if (drag.h.k === 0) Ob.arm1 = armPct; else Ob.arm2 = armPct;
+        /* いまの o1, o2（d に対する割合）を求め、動かした側だけ置き換える */
+        var phi0 = (Ob.dir || 0) * Math.PI / 180, bl0 = (Ob.bulge === undefined ? 30 : Ob.bulge) / 100;
+        var o1 = bl0 * Math.SQRT2 * Math.cos(phi0 - Math.PI / 4);
+        var o2 = bl0 * Math.SQRT2 * Math.cos(phi0 + Math.PI / 4);
+        if (drag.h.k === 0) o1 = cb / B0.d; else o2 = cb / B0.d;
+        var blN = Math.sqrt((o1 * o1 + o2 * o2) / 2);
+        if (blN > 1.5) blN = 1.5;
+        Ob.bulge = blN * 100;
+        if (blN > 1e-4) Ob.dir = Math.atan2((o1 - o2) / 2, (o1 + o2) / 2) * 180 / Math.PI;   /* ドラッグ中は小数のまま持ち、四角が指に正確についてくるように */
+        syncSliders();
+      }
+    } else if (drag.type === 'oend'){
+      var O = obj.orbit;
+      var tips = tipList(findObj(drag.h.k === 0 ? O.a : O.b));
+      var bi = -1, bd = 1e18;
+      tips.forEach(function(q, qi){ var dd = Math.hypot(q[0] - p.x, q[1] - p.y); if (dd < bd){ bd = dd; bi = qi; } });
+      if (bi >= 0){
+        if (drag.h.k === 0){ O.va = bi + 1; $('ovA').value = O.va; }
+        else { O.vb = bi + 1; $('ovB').value = O.vb; }
+      }
+    } else if (drag.type === 'chain'){
+      obj.layout.chPts[drag.h.k] = [p.x - obj.geo.x, p.y - obj.geo.y];
+    } else if (drag.type === 'move'){
+      obj.geo.x += dx; obj.geo.y += dy;
+    }
+    drag.last = p;
+    request();
+  });
+  function endDrag(){
+    if (!drag) return;
+    drag = null;
+    cv.style.cursor = 'default';
+    request();
+  }
+  cv.addEventListener('pointerup', endDrag);
+  cv.addEventListener('pointercancel', endDrag);
+
+  /* =========================================================
+     UI 構築
+     ========================================================= */
+  var sliders = [], toggles = [], rows = {}, choices = [];
+  /* 編集中の接続線：線を選んでいなくても、最後に触った線を「形状・配置」タブで編集できる */
+  var activeLineId = null;
+  function activeLine(){
+    var o = findObj(activeLineId);
+    if (o && o.kind === 'orbit') return o;
+    for (var i = objects.length - 1; i >= 0; i--) if (objects[i].kind === 'orbit'){ activeLineId = objects[i].id; return objects[i]; }
+    return null;
+  }
+  var orbitDummy = { va: 0, vb: 0, autoMode: 'near', shape: 'loop', fuse: false, bulge: 30, dir: 0, arm1: 33, arm2: 33, follow: 50, lineWidth: 14, startW: 100, endW: 100, taper: 0, tipThin: 88, relief: 45, gloss: 55, colorMode: 'inherit', tangent: true };
+  var instRotProxy = {};
+  Object.defineProperty(instRotProxy, 'v', {
+    get: function(){ var o = curObj(); if (o.layout.mode === 'free') return 0; return instRotArr(o)[o.activeInst || 0] || 0; },
+    set: function(x){ var o = curObj(); if (o.layout.mode === 'free') return; instRotArr(o)[o.activeInst || 0] = x; }
+  });
+  function target(scope){
+    if (scope === 'global') return G;
+    var o = curObj();
+    if (scope === 'geo') return o.geo;
+    if (scope === 'light') return o.light;
+    if (scope === 'layout') return o.layout;
+    if (scope === 'inst') return instRotProxy;
+    if (scope === 'orbit'){ var al = activeLine(); return al ? al.orbit : orbitDummy; }
+    return o;
+  }
+  function fmt(cfg, v){ v = Math.round(+v); if (cfg.zeroLabel && v === 0) return cfg.zeroLabel; return (cfg.signed && v > 0) ? '+' + v + (cfg.unit || '') : String(v) + (cfg.unit || ''); }
+
+  function addSlider(containerId, cfg){
+    var row = document.createElement('div');
+    row.className = 'slider';
+    var lbl = document.createElement('button');
+    lbl.className = 'lbl'; lbl.type = 'button'; lbl.textContent = cfg.label;
+    lbl.title = 'タップで初期値に戻す';
+    var track = document.createElement('div'); track.className = 'track';
+    var inp = document.createElement('input');
+    inp.type = 'range'; inp.min = cfg.min; inp.max = cfg.max; inp.value = cfg.def;
+    inp.setAttribute('aria-label', cfg.label);
+    track.appendChild(inp);
+    if (cfg.signed){ var z = document.createElement('span'); z.className = 'zero'; track.appendChild(z); }
+    var val = document.createElement('span'); val.className = 'val'; val.textContent = fmt(cfg, cfg.def);
+    row.appendChild(lbl); row.appendChild(track); row.appendChild(val);
+    $(containerId).appendChild(row);
+    function apply(v){
+      target(cfg.scope)[cfg.key] = v;
+      val.textContent = fmt(cfg, v);
+      if (cfg.onChange) cfg.onChange(v);
+      request();
+    }
+    inp.addEventListener('input', function(){ apply(+inp.value); });
+    lbl.addEventListener('click', function(){ inp.value = cfg.def; apply(cfg.def); });
+    sliders.push({ cfg:cfg, inp:inp, val:val });
+    rows[cfg.key] = row;
+  }
+  function syncSliders(){
+    sliders.forEach(function(s){
+      var v = target(s.cfg.scope)[s.cfg.key];
+      if (v === undefined) v = s.cfg.def;
+      s.inp.value = v;
+      s.val.textContent = fmt(s.cfg, v);
+    });
+  }
+
+  function addToggle(containerId, key, scope, boxId){
+    var wrap = $(containerId);
+    var bOn = document.createElement('button'); bOn.type = 'button'; bOn.textContent = 'ON';
+    var bOff = document.createElement('button'); bOff.type = 'button'; bOff.textContent = 'OFF';
+    wrap.appendChild(bOn); wrap.appendChild(bOff);
+    var t = { key:key, scope:scope, bOn:bOn, bOff:bOff, boxId:boxId };
+    bOn.addEventListener('click', function(){ target(scope)[key] = true; syncToggle(t); request(); });
+    bOff.addEventListener('click', function(){ target(scope)[key] = false; syncToggle(t); request(); });
+    toggles.push(t);
+  }
+  function syncToggle(t){
+    var v = !!target(t.scope)[t.key];
+    t.bOn.classList.toggle('on', v);
+    t.bOff.classList.toggle('on', !v);
+    if (t.boxId) $(t.boxId).classList.toggle('dim', !v);
+  }
+  function addChoice(list, scope, key, after){
+    var ch = { list:list, scope:scope, key:key };
+    list.forEach(function(item){
+      $(item.id).addEventListener('click', function(){
+        target(scope)[key] = item.val;
+        if (after) after(item.val);
+        syncUI(); request();
+      });
+    });
+    choices.push(ch);
+  }
+  function syncChoice(ch){
+    var v = target(ch.scope)[ch.key];
+    ch.list.forEach(function(item){ $(item.id).classList.toggle('on', item.val === v); });
+  }
+
+  /* ---------- タブ ---------- */
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(tb){
+    tb.addEventListener('click', function(){
+      currentPane = tb.dataset.pane;
+      request();
+      Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(x){ x.classList.toggle('on', x === tb); });
+      Array.prototype.forEach.call(document.querySelectorAll('.pane'), function(pn){ pn.classList.toggle('on', pn.id === tb.dataset.pane); });
+    });
+  });
+
+  /* ---------- タブ1：オブジェクト ---------- */
+  $('addObj').addEventListener('click', function(){
+    var n = objects.length, ang = n * 2.4;
+    var o = newObject(C + Math.cos(ang) * 220, C + Math.sin(ang) * 220);
+    o.light = clone(curObj().light);
+    objects.push(o);
+    sel = objects.length - 1;
+    syncUI(); request();
+  });
+  /* 選択中のオブジェクトだけを複製する（ループは傾きを変えて重ねる） */
+  function duplicateSelected(){
+    var o = clone(curObj());
+    o.id = uid++;
+    if (o.kind === 'orbit'){
+      o.orbit.tilt = normDeg(o.orbit.tilt + 35);
+    } else {
+      o.geo.x += 70; o.geo.y += 70;
+    }
+    objects.splice(sel + 1, 0, o);
+    sel = sel + 1;
+    syncUI(); request();
+  }
+  $('dupObj').addEventListener('click', duplicateSelected);
+  $('dupObjBar').addEventListener('click', duplicateSelected);
+
+  /* 配列の中で選んでいる1つを、単体のオブジェクトとして取り出して増やす */
+  $('extractInst').addEventListener('click', function(){
+    var src = curObj();
+    if (src.layout.mode === 'free' || src.kind === 'orbit') return;
+    var it = activeItem(src);
+    var g = clone(it.geo);
+    g.x += 40; g.y += 40;
+    var o = { id: uid++, light: clone(src.light), layout: defaultLayout(), geo: g, activeInst: 0 };
+    objects.splice(sel + 1, 0, o);
+    sel = sel + 1;
+    syncUI(); request();
+  });
+  /* 選択中のオブジェクトを削除（線は図形が1つでも消せる。図形は最後の1つだけは残す） */
+  function deleteSelected(){
+    var o = curObj();
+    if (!o) return;
+    var shapes = objects.filter(function(x){ return x.kind !== 'orbit'; }).length;
+    if (o.kind !== 'orbit' && shapes <= 1) return;
+    objects.splice(sel, 1);
+    sel = Math.max(0, Math.min(sel - 1, objects.length - 1));
+    if (curObj().kind === 'orbit'){
+      /* 線を消したあとは、図形を選び直す */
+      for (var i = objects.length - 1; i >= 0; i--){ if (objects[i].kind !== 'orbit'){ sel = i; break; } }
+    }
+    syncUI(); request();
+  }
+  $('delObj').addEventListener('click', deleteSelected);
+  $('delLine').addEventListener('click', function(){
+    var al = activeLine(); if (!al) return;
+    sel = objects.indexOf(al);
+    deleteSelected();
+  });
+  /* パソコンでは Delete / Backspace キーでも削除（入力欄を操作中は無効） */
+  window.addEventListener('keydown', function(e){
+    if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+    var tg = e.target && e.target.tagName;
+    if (tg === 'INPUT' || tg === 'SELECT' || tg === 'TEXTAREA') return;
+    e.preventDefault();
+    deleteSelected();
+  });
+
+  /* ---------- タブ1：配置モード ---------- */
+  addSlider('boxCircle', { key:'count',   label:'個数',             min:2,  max:24,  def:8,   scope:'layout' });
+  addSlider('boxCircle', { key:'spacing', label:'間隔（円の埋まり）', min:10, max:100, def:100, scope:'layout', unit:'%' });
+  addSlider('boxCircle', { key:'extent',  label:'全体のサイズ',     min:30, max:460, def:240, scope:'layout' });
+
+  addSlider('boxSpiral', { key:'spCount',  label:'個数',         min:3,  max:40,  def:14,  scope:'layout' });
+  addSlider('boxSpiral', { key:'spStep',   label:'間隔（角度）', min:10, max:120, def:40,  scope:'layout', unit:'°' });
+  addSlider('boxSpiral', { key:'spExtent', label:'全体のサイズ', min:60, max:470, def:330, scope:'layout' });
+  addSlider('boxSpiral', { key:'spShrink', label:'中心へ縮む',   min:0,  max:100, def:60,  scope:'layout' });
+
+  addSlider('boxChain', { key:'chCount',     label:'個数',       min:3,  max:40,  def:14, scope:'layout' });
+  addSlider('boxChain', { key:'chTaper',     label:'太さの変化', min:0,  max:100, def:70, scope:'layout' });
+  addSlider('boxChain', { key:'chBranches',  label:'枝の数',     min:0,  max:4,   def:2,  scope:'layout' });
+  addSlider('boxChain', { key:'chBranchLen', label:'枝の長さ',   min:10, max:100, def:50, scope:'layout' });
+
+  addSlider('boxArrayRot', { key:'rotAll', label:'全体の回転',   min:-180, max:180, def:0, scope:'layout', signed:true, unit:'°' });
+  addSlider('boxArrayRot', { key:'v',      label:'選択中の回転', min:-180, max:180, def:0, scope:'inst',   signed:true, unit:'°' });
+  $('resetInstRot').addEventListener('click', function(){
+    var o = curObj();
+    if (o.layout.mode !== 'free') o.layout.instRot[o.layout.mode] = [];
+    syncSliders(); request();
+  });
+
+  addChoice([{ id:'alOn', val:true }, { id:'alOff', val:false }], 'layout', 'align');
+  addChoice([
+    { id:'lmFree', val:'free' }, { id:'lmCircle', val:'circle' },
+    { id:'lmSpiral', val:'spiral' }, { id:'lmChain', val:'chain' }
+  ], 'layout', 'mode', function(mode){
+    var obj = curObj(), t = obj.geo;
+    obj.activeInst = 0;
+    var untouched = t.shape === 'circle' && t.sharp === 0 && t.size === 130;
+    if (!untouched) return;
+    if (mode === 'chain'){ t.shape = 'diamond'; t.sharp = 55; t.size = 62; resetOffsets(t); resetBends(t); }
+    if (mode === 'circle' || mode === 'spiral'){ t.shape = 'star'; t.points = 5; t.sharp = 30; t.size = 58; resetOffsets(t); resetBends(t); }
+  });
+
+  /* ---------- タブ1：形 ---------- */
+  var SHAPES = [
+    { id:'circle',  name:'丸（基本の光）' },
+    { id:'diamond', name:'ダイヤ' },
+    { id:'star',    name:'星' },
+    { id:'heart',   name:'ハート' },
+    { id:'note',    name:'音符 ♪' },
+    { id:'cross',   name:'十字' },
+    { id:'drop',    name:'しずく' }
+  ];
+  var shapeSelect = $('shapeSelect');
+  SHAPES.forEach(function(s){
+    var o = document.createElement('option'); o.value = s.id; o.textContent = s.name;
+    shapeSelect.appendChild(o);
+  });
+  shapeSelect.addEventListener('change', function(){
+    var geo = curGeo();
+    geo.shape = shapeSelect.value;
+    resetOffsets(geo); resetBends(geo);
+    syncUI(); request();
+  });
+  addSlider('groupShape', { key:'size',   label:'中心サイズ', min:10,   max:300, def:130, scope:'geo' });
+  addSlider('groupShape', { key:'spike',  label:'棘の長さ',   min:30,   max:250, def:100, scope:'geo', unit:'%' });
+  addSlider('groupShape', { key:'sharp',  label:'尖り',       min:-100, max:100, def:0,   scope:'geo', signed:true });
+  addSlider('groupShape', { key:'twist',  label:'全体の曲げ', min:-100, max:100, def:0,   scope:'geo', signed:true });
+  addSlider('groupShape', { key:'rot',    label:'回転',       min:-180, max:180, def:0,   scope:'geo', signed:true, unit:'°' });
+  addSlider('groupShape', { key:'points', label:'頂点の数',   min:3,    max:16,  def:4,   scope:'geo',
+    onChange: function(){ resetOffsets(curGeo()); resetBends(curGeo()); } });
+  $('resetBends').addEventListener('click', function(){ resetBends(curGeo()); curGeo().twist = 0; syncSliders(); request(); });
+  $('resetVerts').addEventListener('click', function(){ resetOffsets(curGeo()); request(); });
+
+  /* ---------- タブ1：描画モード ---------- */
+  addSlider('boxLine', { key:'lineWidth', label:'線の太さ', min:1, max:30, def:4, scope:'light' });
+  addChoice([{ id:'dmLight', val:'light' }, { id:'dmSolid', val:'solid' }, { id:'dmLine', val:'line' }], 'light', 'mode');
+
+  /* ---------- タブ1：ループの形 ---------- */
+  /* 頂点番号のドロップダウン：0＝自動（一番近い棘）、1以上＝その番号の棘 */
+  function fillTipSelect(sel, obj, prefix, value){
+    var n = obj ? tipList(obj).length : 0;
+    sel.innerHTML = '';
+    var o0 = document.createElement('option'); o0.value = 0; o0.textContent = '自動（一番近い棘）';
+    sel.appendChild(o0);
+    for (var i = 1; i <= n; i++){
+      var op = document.createElement('option'); op.value = i; op.textContent = prefix + i + ' 番目の棘';
+      sel.appendChild(op);
+    }
+    sel.value = (value > 0 && value <= n) ? value : 0;
+  }
+  $('ovA').addEventListener('change', function(){ var al = activeLine(); if (al){ al.orbit.va = +$('ovA').value; request(); } });
+  $('ovB').addEventListener('change', function(){ var al = activeLine(); if (al){ al.orbit.vb = +$('ovB').value; request(); } });
+  $('orbA').addEventListener('change', function(){ $('orbAv').dataset.v = 0; syncUI(); request(); });
+  $('orbB').addEventListener('change', function(){ $('orbBv').dataset.v = 0; syncUI(); request(); });
+  $('orbAv').addEventListener('change', function(){ $('orbAv').dataset.v = $('orbAv').value; request(); });
+  $('orbBv').addEventListener('change', function(){ $('orbBv').dataset.v = $('orbBv').value; request(); });
+
+  /* 線の太さ（Line Width）：この値がそのまま線の見た目の幅（px）。1pxの細線から120pxの太い帯まで */
+  addSlider('boxLineWidth', { key:'lineWidth', label:'線の太さ（中央の最大幅）', min:1, max:50, def:14, scope:'orbit', unit:'px' });
+  addSlider('boxLineWidth', { key:'tipThin', label:'両端の細さ（リボン）', min:0, max:100, def:88, scope:'orbit' });
+  /* キャンバスのすぐ下にも同じスライダー（どのタブを開いていても太さを変えられる） */
+  addSlider('stageLineBox', { key:'lineWidth', label:'接続線の太さ', min:1, max:50, def:14, scope:'orbit', unit:'px' });
+  addSlider('boxOrbit', { key:'startW',  label:'始点（A側）の太さ', min:0, max:200, def:100, scope:'orbit', unit:'%' });
+  addSlider('boxOrbit', { key:'endW',    label:'終点（B側）の太さ', min:0, max:200, def:100, scope:'orbit', unit:'%' });
+  addSlider('boxOrbit', { key:'bulge',   label:'カーブの膨らみ（Strength）', min:-100, max:150, def:30, scope:'orbit', signed:true, unit:'%' });
+  addSlider('boxOrbit', { key:'dir',     label:'カーブの方向（Direction）', min:-180, max:180, def:0, scope:'orbit', signed:true, unit:'°' });
+  addSlider('boxOrbit', { key:'arm1',    label:'ハンドルの長さ（A側）', min:0, max:150, def:33, scope:'orbit', unit:'%' });
+  addSlider('boxOrbit', { key:'arm2',    label:'ハンドルの長さ（B側）', min:0, max:150, def:33, scope:'orbit', unit:'%' });
+  addSlider('boxOrbit', { key:'follow',  label:'棘の向きに沿わせる', min:0,  max:100, def:50, scope:'orbit', unit:'%' });
+  addSlider('boxOrbit', { key:'taper',   label:'中央の太さ',       min:-100, max:100, def:0,  scope:'orbit', signed:true });
+  addSlider('boxOrbit', { key:'relief',  label:'立体感',           min:0,    max:100, def:45, scope:'orbit' });
+  addSlider('boxLineWidth', { key:'gloss', label:'つや（リキッド感）', min:0, max:100, def:55, scope:'orbit' });
+  addChoice([{ id:'tgOn', val:true }, { id:'tgOff', val:false }], 'orbit', 'tangent');
+  addChoice([{ id:'lcInherit', val:'inherit' }, { id:'lcOwn', val:'own' }], 'orbit', 'colorMode');
+  addChoice([{ id:'oaOuter', val:'outer' }, { id:'oaNear', val:'near' }], 'orbit', 'autoMode');
+  /* 弧／S字のボタンは「カーブの方向」のプリセット（0°＝弧、90°＝S字） */
+  addChoice([{ id:'osLoop', val:'loop' }, { id:'osEight', val:'eight' }], 'orbit', 'shape', function(v){
+    var al = activeLine(); if (!al) return;
+    al.orbit.dir = v === 'eight' ? 90 : 0;
+  });
+  addChoice([{ id:'ofOff', val:false }, { id:'ofOn', val:true }], 'orbit', 'fuse');
+  $('orbitAuto').addEventListener('click', function(){
+    var al = activeLine(); if (!al) return;
+    al.orbit.va = 0; al.orbit.vb = 0; syncUI(); request();
+  });
+
+  /* ---------- タブ2：オービタル接続の作成 ---------- */
+  var createAutoMode = 'near';
+  $('coOuter').addEventListener('click', function(){ createAutoMode = 'outer'; $('coOuter').classList.add('on'); $('coNear').classList.remove('on'); request(); });
+  $('coNear').addEventListener('click',  function(){ createAutoMode = 'near';  $('coNear').classList.add('on'); $('coOuter').classList.remove('on'); request(); });
+  $('createOrbit').addEventListener('click', function(){
+    var A = findObj(+$('orbA').value), B = findObj(+$('orbB').value);
+    if (!A || !B || A === B || A.kind === 'orbit' || B.kind === 'orbit') return;
+    var o = newOrbit(A, B);
+    o.orbit.autoMode = createAutoMode;
+    o.orbit.va = +$('orbAv').value || 0;
+    o.orbit.vb = +$('orbBv').value || 0;
+    objects.push(o);
+    sel = objects.length - 1;
+    activeLineId = o.id;
+    syncUI(); request();
+  });
+
+  /* ---------- タブ4：白線 ---------- */
+  addChoice([{ id:'edOn', val:true }, { id:'edOff', val:false }], 'light', 'edgeOn');
+  addToggle('tgSpike', 'spikeOn', 'light', null);
+
+  /* ---------- タブ2：融合 ---------- */
+  addSlider('boxFuse', { key:'fuseAmt', label:'なめらかさ（閾値）', min:0, max:100, def:55, scope:'global' });
+  addSlider('boxFuse', { key:'neckAmt', label:'つなぎ目の太さ', min:-100, max:100, def:0, scope:'global', signed:true });
+  addChoice([{ id:'fuOn', val:true }, { id:'fuOff', val:false }], 'global', 'fuseOn');
+
+  /* ---------- タブ3：ベースカラー ---------- */
+  addSlider('groupGrad',    { key:'midPos',   label:'中間色の位置', min:1, max:98,  def:45,  scope:'light', unit:'%', onChange: syncGradPreview });
+  addSlider('groupGrad',    { key:'outerPos', label:'外側色の位置', min:5, max:100, def:100, scope:'light', unit:'%', onChange: syncGradPreview });
+  addSlider('groupGrad',    { key:'coreSize', label:'中心の広さ',   min:0, max:100, def:50,  scope:'light' });
+  addSlider('groupOpacity', { key:'opacity',  label:'不透明度',     min:0, max:100, def:100, scope:'light' });
+
+  var PRESETS = [
+    { name:'藍',   core:'#8fb6e3', mid:'#5a86c4', outer:'#2e4f8f' },
+    { name:'氷',   core:'#ffffff', mid:'#8fe3ff', outer:'#2f6bff' },
+    { name:'白熱', core:'#fffbe8', mid:'#ffc35a', outer:'#ff4a10' },
+    { name:'薄桃', core:'#fff4fb', mid:'#ff8ad8', outer:'#8a2cff' },
+    { name:'月',   core:'#ffffff', mid:'#d6dcf5', outer:'#6f7fae' },
+    { name:'蛍',   core:'#fbfff0', mid:'#7dffb8', outer:'#008a5a' }
+  ];
+  var presetEls = [];
+  PRESETS.forEach(function(p){
+    var b = document.createElement('button');
+    b.className = 'preset'; b.type = 'button';
+    b.innerHTML = '<span class="pchip" style="background:radial-gradient(circle at 50% 50%,' + p.core + ' 0%,' + p.mid + ' 35%,' + p.outer + ' 75%,#000 100%)"></span><span class="pl">' + p.name + '</span>';
+    b.addEventListener('click', function(){
+      var L = curObj().light;
+      L.core = p.core; L.mid = p.mid; L.outer = p.outer;
+      syncColors(); request();
+    });
+    $('presets').appendChild(b);
+    presetEls.push(b);
+  });
+  [['colCore','core'],['colMid','mid'],['colOuter','outer']].forEach(function(pr){
+    $(pr[0]).addEventListener('input', function(){
+      curObj().light[pr[1]] = $(pr[0]).value;
+      syncColors(); request();
+    });
+  });
+  function syncGradPreview(){
+    var L = curObj().light;
+    var op = Math.max(5, L.outerPos), mp = Math.min(op - 2, Math.max(1, L.midPos));
+    $('gradPreview').style.background = 'linear-gradient(90deg,' + L.core + ' 0%,' + L.mid + ' ' + mp + '%,' + L.outer + ' ' + op + '%,' + L.outer + ' 100%)';
+    $('tickMid').style.left = mp + '%';
+    $('tickOuter').style.left = 'calc(' + op + '% - 1px)';
+  }
+
+  /* ---------- タブ4：光の色 ---------- */
+  addChoice([{ id:'gaAuto', val:true }, { id:'gaCustom', val:false }], 'light', 'glowAuto');
+  $('colGlow').addEventListener('input', function(){
+    var L = curObj().light;
+    L.glowColor = $('colGlow').value;
+    L.glowAuto = false;
+    syncUI(); request();
+  });
+  function syncColors(){
+    var L = curObj().light;
+    $('colCore').value = L.core;   $('swCore').style.background = L.core;
+    $('colMid').value = L.mid;     $('swMid').style.background = L.mid;
+    $('colOuter').value = L.outer; $('swOuter').style.background = L.outer;
+    PRESETS.forEach(function(p, i){
+      presetEls[i].classList.toggle('on', p.core === L.core && p.mid === L.mid && p.outer === L.outer);
+    });
+    syncGradPreview();
+    var gc = glowColorOf(L);
+    $('colGlow').value = gc;
+    $('swGlow').style.background = gc;
+    $('glowLabel').textContent = L.glowAuto ? '光の色（いまは外側の色）' : '光の色';
+    var c1 = gpal(L, 0.22), c2 = gpal(L, 0.55);
+    $('glowPreview').style.background = 'linear-gradient(90deg,#ffffff 0%,' + rgba(c1, 1) + ' 22%,' + rgba(c2, 1) + ' 55%,' + gc + ' 100%)';
+  }
+
+  /* ---------- タブ4：光の要素 ---------- */
+  addSlider('groupGlow', { key:'glow', label:'ぼかし', min:0, max:100, def:0, scope:'light' });
+
+  addSlider('boxCore', { key:'coreSpread', label:'広がり', min:0, max:100, def:45, scope:'light' });
+  addSlider('boxCore', { key:'coreInt',    label:'強さ',   min:0, max:100, def:55, scope:'light' });
+  addToggle('tgCore', 'coreOn', 'light', 'boxCore');
+
+  addSlider('boxOutline', { key:'outlineSpread', label:'広がり', min:0, max:100, def:35,  scope:'light' });
+  addSlider('boxOutline', { key:'outlineInt',    label:'強さ',   min:0, max:300, def:100, scope:'light', unit:'%' });
+  addToggle('tgOutline', 'outlineOn', 'light', 'boxOutline');
+
+  addSlider('boxCrossSliders', { key:'crossLen',   label:'長さ', min:0, max:100, def:45, scope:'light' });
+  addSlider('boxCrossSliders', { key:'crossWidth', label:'太さ', min:0, max:100, def:30, scope:'light' });
+  addSlider('boxCrossSliders', { key:'crossInt',   label:'強さ', min:0, max:100, def:45, scope:'light' });
+  addSlider('boxCrossSliders', { key:'crossAngle', label:'角度', min:0, max:90,  def:0,  scope:'light', unit:'°' });
+  addToggle('tgCross', 'crossOn', 'light', 'boxCross');
+  addChoice([{ id:'caEach', val:'each' }, { id:'caCenter', val:'center' }], 'light', 'crossAt');
+
+  /* ---------- タブ4：Y2K ---------- */
+  addSlider('boxWaveSliders', { key:'waveAmt',  label:'歪みの強さ', min:0, max:100, def:35, scope:'global' });
+  addSlider('boxWaveSliders', { key:'waveFine', label:'波の細かさ', min:0, max:100, def:50, scope:'global' });
+  addToggle('tgWave', 'waveOn', 'global', 'boxWave');
+  addChoice([{ id:'waveModeWave', val:'wave' }, { id:'waveModeRipple', val:'ripple' }], 'global', 'waveMode');
+
+  addSlider('boxGlitchSliders', { key:'glitchAmt', label:'強さ', min:0, max:100, def:30, scope:'global' });
+  addToggle('tgGlitch', 'glitchOn', 'global', 'boxGlitch');
+  $('glitchSeed').addEventListener('click', function(){
+    G.glitchSeed = Math.floor(Math.random() * 1e9);
+    request();
+  });
+  addSlider('boxChroma', { key:'chromaAmt', label:'ずれ量',   min:0, max:100, def:30, scope:'global' });
+  addToggle('tgChroma', 'chromaOn', 'global', 'boxChroma');
+  addSlider('boxPixel',  { key:'pixelAmt',  label:'粗さ',     min:0, max:100, def:20, scope:'global' });
+  addToggle('tgPixel', 'pixelOn', 'global', 'boxPixel');
+  addSlider('boxNoise',  { key:'noiseAmt',  label:'ザラつき', min:0, max:100, def:35, scope:'global' });
+  addToggle('tgNoise', 'noiseOn', 'global', 'boxNoise');
+
+  addChoice([{ id:'bgDark', val:true }, { id:'bgLight', val:false }], 'global', 'dark');
+
+  function makeFlat(L){
+    L.glow = 0; L.coreOn = false; L.outlineOn = false; L.crossOn = false;
+    L.spikeOn = false; L.edgeOn = false;
+  }
+  $('flatAll').addEventListener('click', function(){
+    objects.forEach(function(o){ makeFlat(o.light); });
+    G.waveOn = false; G.glitchOn = false; G.chromaOn = false; G.pixelOn = false; G.noiseOn = false;
+    syncUI(); request();
+  });
+
+  /* ---------- キャンバス下のバー ---------- */
+  addChoice([{ id:'hOn', val:true }, { id:'hOff', val:false }], 'global', 'handles');
+  $('exportBtn').addEventListener('click', function(){
+    renderScene();
+    $('exportImg').src = off.toDataURL('image/png');
+    $('overlay').classList.add('on');
+    request();
+  });
+  $('closeOverlay').addEventListener('click', function(){ $('overlay').classList.remove('on'); });
+
+  /* =========================================================
+     UI 同期
+     ========================================================= */
+  function syncUI(){
+    var obj = curObj();
+    var mode = obj.layout.mode;
+    var n = instances(obj).length;
+    if ((obj.activeInst || 0) >= n) obj.activeInst = 0;
+
+    var list = $('objList');
+    list.innerHTML = '';
+    objects.forEach(function(o, i){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (i === sel ? ' on' : '');
+      b.textContent = (o.kind === 'orbit' ? '線 ' : (o.layout.mode !== 'free' ? '配列 ' : '')) + String(o.id).padStart(2, '0');
+      b.addEventListener('click', function(){ sel = i; syncUI(); request(); });
+      list.appendChild(b);
+    });
+    $('delObj').disabled = obj.kind !== 'orbit' && objects.filter(function(x){ return x.kind !== 'orbit'; }).length <= 1;
+
+    /* ループを選んでいるときは、形と配置の代わりにループの設定を出す */
+    var isOrbit = obj.kind === 'orbit';
+    if (isOrbit) activeLineId = obj.id;
+    var al = activeLine();
+    /* 接続線が1本でもあれば、図形を選んでいても線の設定（太さなど）を常に表示 */
+    $('secOrbit').classList.toggle('hide', !al);
+    $('stageLine').classList.toggle('hide', !al);
+    var tanOn = !al || al.orbit.tangent !== false;
+    if (rows.dir) rows.dir.classList.toggle('dim', tanOn);
+    if (rows.follow) rows.follow.classList.toggle('dim', tanOn);
+    $('osRow').classList.toggle('dim', tanOn);
+    $('stageLineTag').textContent = al ? ('いま変えているのは「線 ' + String(al.id).padStart(2, '0') + '」。別の線は形状・配置タブの「編集する線」で選べます') : '';
+    var ll = $('lineList');
+    ll.innerHTML = '';
+    objects.forEach(function(o){
+      if (o.kind !== 'orbit') return;
+      var cb = document.createElement('button');
+      cb.type = 'button';
+      cb.className = 'chip' + (al && o.id === al.id ? ' on' : '');
+      cb.textContent = '線 ' + String(o.id).padStart(2, '0');
+      cb.addEventListener('click', function(){ activeLineId = o.id; sel = objects.indexOf(o); syncUI(); request(); });
+      ll.appendChild(cb);
+    });
+    $('lineTag').textContent = al ? ('線 ' + String(al.id).padStart(2, '0') + ' を編集中') : '';
+    $('secLayout').classList.toggle('hide', isOrbit);
+    $('secShape').classList.toggle('hide', isOrbit);
+
+    /* オービタル接続の相手リスト */
+    var cands = objects.filter(function(o){ return o.kind !== 'orbit'; });
+    function labelOf(o){ return (o.layout.mode !== 'free' ? '配列 ' : 'オブジェクト ') + String(o.id).padStart(2, '0'); }
+    /* A：すべての候補 */
+    var sA = $('orbA'), prevA = sA.value;
+    sA.innerHTML = '';
+    cands.forEach(function(o){
+      var op = document.createElement('option'); op.value = o.id; op.textContent = labelOf(o); sA.appendChild(op);
+    });
+    if (prevA && cands.some(function(o){ return String(o.id) === prevA; })) sA.value = prevA;
+    else if (cands.length) sA.value = (obj.kind !== 'orbit' ? obj : cands[0]).id;
+    /* B：Aで選んだもの以外（同じオブジェクトどうしはつながない） */
+    var aId = +sA.value;
+    var candsB = cands.filter(function(o){ return o.id !== aId; });
+    var sB = $('orbB'), prevB = sB.value;
+    sB.innerHTML = '';
+    if (!candsB.length){
+      var opn = document.createElement('option'); opn.value = ''; opn.textContent = 'もう1つオブジェクトを追加してください';
+      sB.appendChild(opn);
+    }
+    candsB.forEach(function(o){
+      var op = document.createElement('option'); op.value = o.id; op.textContent = labelOf(o); sB.appendChild(op);
+    });
+    if (prevB && candsB.some(function(o){ return String(o.id) === prevB; })) sB.value = prevB;
+    else if (candsB.length) sB.value = candsB[0].id;
+    $('createOrbit').disabled = !candsB.length;
+    fillTipSelect($('orbAv'), findObj(+$('orbA').value), 'A', +($('orbAv').dataset.v || 0));
+    fillTipSelect($('orbBv'), findObj(+$('orbB').value), 'B', +($('orbBv').dataset.v || 0));
+    if (al){
+      fillTipSelect($('ovA'), findObj(al.orbit.a), 'A', al.orbit.va || 0);
+      fillTipSelect($('ovB'), findObj(al.orbit.b), 'B', al.orbit.vb || 0);
+    }
+    $('extractInst').disabled = mode === 'free';
+
+    $('boxCircle').classList.toggle('hide', mode !== 'circle');
+    $('boxSpiral').classList.toggle('hide', mode !== 'spiral');
+    $('boxChain').classList.toggle('hide', mode !== 'chain');
+    $('arrayRotWrap').classList.toggle('hide', mode === 'free');
+    $('instLabel').textContent = String((obj.activeInst || 0) + 1);
+    $('shapeTag').textContent = mode !== 'free' ? '並べる元の図形（全部に反映）' : '';
+
+    var geo = curGeo();
+    shapeSelect.value = geo.shape;
+    var usable = (geo.shape === 'circle' || geo.shape === 'star');
+
+    syncSliders();
+    toggles.forEach(syncToggle);
+    choices.forEach(syncChoice);
+    rows.points.classList.toggle('dim', !usable);
+    $('pointsNote').style.display = usable ? 'none' : 'block';
+
+    var lightMode = obj.light.mode === 'light';
+    $('boxLine').classList.toggle('dim', obj.light.mode !== 'line');
+    $('secElements').classList.toggle('dim', !lightMode);
+    $('secGlowColor').classList.toggle('dim', !lightMode);
+    $('boxFuse').classList.toggle('dim', !G.fuseOn);
+
+    syncColors();
+  }
+
+  /* =========================================================
+     起動
+     ========================================================= */
+  objects.push(newObject(C, C));
+  makeFlat(objects[0].light);   /* 起動直後は光・影・加算合成を一切使わない */
+  sel = 0;
+  syncUI();
+  window.addEventListener('resize', request);
+  draw();
+})();
+</script>
+</body>
+</html>
